@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(python -m pip install xgboost -q 2>&1 | Select-String -NotMatch \"WARNING\")"
+    ]
+  }
+}
