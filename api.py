@@ -73,7 +73,18 @@ class Prediccion(SQLModel, table=True):
 # Schemas de entrada (no son tablas)
 # ---------------------------------------------------------------------------
 
+class PartidoUpdate(SQLModel):
+    fase: Optional[str] = None
+    goles_e1: Optional[int] = None
+    goles_e2: Optional[int] = None
+    fecha: Optional[str] = None
+
+
 class EvaluacionCreate(SQLModel):
+    filepath: str = DATASET
+
+
+class EvaluacionUpdate(SQLModel):
     filepath: str = DATASET
 
 
@@ -82,6 +93,12 @@ class PrediccionCreate(SQLModel):
     equipo2: str
     evaluacion_id: int
     n_runs: int = 20
+
+
+class PrediccionUpdate(SQLModel):
+    equipo1: Optional[str] = None
+    equipo2: Optional[str] = None
+    n_runs: Optional[int] = None
 
 
 # ---------------------------------------------------------------------------
@@ -164,6 +181,25 @@ def obtener_partido(partido_id: int, session: Session = Depends(get_session)):
     return partido
 
 
+@app.put("/partidos/{partido_id}", response_model=Partido)
+def actualizar_partido(partido_id: int, data: PartidoUpdate, session: Session = Depends(get_session)):
+    partido = session.get(Partido, partido_id)
+    if not partido or not partido.activo:
+        raise HTTPException(status_code=404, detail="Partido no encontrado")
+    if data.fase is not None:
+        partido.fase = data.fase
+    if data.goles_e1 is not None:
+        partido.goles_e1 = data.goles_e1
+    if data.goles_e2 is not None:
+        partido.goles_e2 = data.goles_e2
+    if data.fecha is not None:
+        partido.fecha = data.fecha
+    session.add(partido)
+    session.commit()
+    session.refresh(partido)
+    return partido
+
+
 @app.delete("/partidos/{partido_id}", status_code=204)
 def desactivar_partido(partido_id: int, session: Session = Depends(get_session)):
     """Soft delete: marca activo=False para mantener historial."""
@@ -212,6 +248,28 @@ def obtener_evaluacion(evaluacion_id: int, session: Session = Depends(get_sessio
     ev = session.get(Evaluacion, evaluacion_id)
     if not ev or not ev.activo:
         raise HTTPException(status_code=404, detail="Evaluación no encontrada")
+    return ev
+
+
+@app.put("/evaluaciones/{evaluacion_id}", response_model=Evaluacion)
+def actualizar_evaluacion(evaluacion_id: int, data: EvaluacionUpdate, session: Session = Depends(get_session)):
+    """Re-ejecuta el pipeline con un nuevo filepath y actualiza los resultados."""
+    ev = session.get(Evaluacion, evaluacion_id)
+    if not ev or not ev.activo:
+        raise HTTPException(status_code=404, detail="Evaluación no encontrada")
+    try:
+        results = run_pipeline(data.filepath)
+    except FileNotFoundError:
+        raise HTTPException(status_code=422, detail=f"Archivo no encontrado: {data.filepath}")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    ev.filepath = data.filepath
+    ev.resultados = results["results"].to_json(orient="records")
+    ev.cv_resultados = results["cv_results"].to_json(orient="records")
+    session.add(ev)
+    session.commit()
+    session.refresh(ev)
+    _resultados_pipeline[evaluacion_id] = results
     return ev
 
 
@@ -271,6 +329,33 @@ def obtener_prediccion(prediccion_id: int, session: Session = Depends(get_sessio
     pred = session.get(Prediccion, prediccion_id)
     if not pred or not pred.activo:
         raise HTTPException(status_code=404, detail="Predicción no encontrada")
+    return pred
+
+
+@app.put("/predicciones/{prediccion_id}", response_model=Prediccion)
+def actualizar_prediccion(prediccion_id: int, data: PrediccionUpdate, session: Session = Depends(get_session)):
+    """Re-ejecuta predecir_partido con los nuevos parámetros y actualiza el resultado."""
+    pred = session.get(Prediccion, prediccion_id)
+    if not pred or not pred.activo:
+        raise HTTPException(status_code=404, detail="Predicción no encontrada")
+    if pred.evaluacion_id not in _resultados_pipeline:
+        raise HTTPException(
+            status_code=409,
+            detail="El pipeline no está en memoria — vuelve a ejecutar POST /evaluaciones",
+        )
+    if data.equipo1 is not None:
+        pred.equipo1 = data.equipo1
+    if data.equipo2 is not None:
+        pred.equipo2 = data.equipo2
+    if data.n_runs is not None:
+        pred.n_runs = data.n_runs
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        predecir_partido(pred.equipo1, pred.equipo2, _resultados_pipeline[pred.evaluacion_id], n_runs=pred.n_runs)
+    pred.output = buf.getvalue()
+    session.add(pred)
+    session.commit()
+    session.refresh(pred)
     return pred
 
 

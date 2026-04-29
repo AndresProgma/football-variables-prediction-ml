@@ -301,6 +301,27 @@ print(f"R² Score: {scores.mean():.4f} (+/- {scores.std():.4f})")
 
 ---
 
+## 🌐 MAPA DE ENDPOINTS — API REST
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `GET` | `/partidos` | Lista todos los partidos (filtro por `equipo1` y/o `equipo2`) |
+| `GET` | `/partidos/{id}` | Obtiene un partido por ID |
+| `PUT` | `/partidos/{id}` | Actualiza fase, goles o fecha |
+| `DELETE` | `/partidos/{id}` | Soft delete — marca `activo=False` |
+| `POST` | `/evaluaciones` | Entrena todos los modelos y guarda resultados de accuracy |
+| `GET` | `/evaluaciones` | Lista evaluaciones activas |
+| `GET` | `/evaluaciones/{id}` | Obtiene una evaluación por ID |
+| `PUT` | `/evaluaciones/{id}` | Re-entrena con un nuevo archivo Excel |
+| `DELETE` | `/evaluaciones/{id}` | Soft delete — marca `activo=False` |
+| `POST` | `/predicciones` | Predice resultado de un partido usando una evaluación existente |
+| `GET` | `/predicciones` | Lista predicciones activas |
+| `GET` | `/predicciones/{id}` | Obtiene una predicción por ID |
+| `PUT` | `/predicciones/{id}` | Re-predice con nuevos equipos o número de corridas |
+| `DELETE` | `/predicciones/{id}` | Soft delete — marca `activo=False` |
+
+---
+
 ## 📚 REFERENCIAS
 
 - **Pandas Documentation**: https://pandas.pydata.org/docs/
