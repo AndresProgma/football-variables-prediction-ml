@@ -1,11 +1,13 @@
 Equipo1,Equipo2,Resultado_Real,Random Forest,Gradient Boosting,Logistic Regression,SVM,XGBoost,KNN
-Newcastle,Benfica,Win,Win,Win,Win,Win,Win,Win
-Villareal,Man City,Loss,Loss,Loss,Win,Loss,Loss,Win
-Real Madrid,Marseille,Win,Win,Win,Win,Win,Win,Win
-Pafos,Bayern Munchen,Loss,Loss,Loss,Loss,Loss,Loss,Loss
-Copengagen,Leverkursen,Draw,Loss,Win,Loss,Loss,Win,Loss
-PSV,Napoli,Win,Win,Win,Win,Win,Win,Win
-Tottenham,Villareal,Win,Win,Win,Loss,Win,Win,Win
+Arsenal,Olympiacos,Win,Win,Win,Win,Win,Win,Win
+Benfica,Qarabag,Loss,Draw,Draw,Draw,Win,Draw,Draw
+Union SG,Newcastle,Loss,Win,Loss,Win,Loss,Loss,Loss
+Copengagen,Leverkursen,Draw,Win,Win,Loss,Win,Win,Win
+Paris,Bayern Munchen,Loss,Win,Draw,Draw,Win,Win,Draw
+Chelsea,Ajax,Win,Win,Draw,Draw,Win,Win,Win
 Chelsea,Benfica,Win,Win,Win,Win,Win,Win,Win
-Villareal,Juventus,Draw,Win,Win,Loss,Win,Win,Win
-Benfica,Qarabag,Loss,Win,Loss,Win,Win,Loss,Draw
+Napoli,Sporting CP,Win,Win,Win,Win,Win,Win,Win
+Liverpool,Real Madrid,Win,Win,Win,Draw,Win,Win,Draw
+Atlanta,Club Brugge,Win,Draw,Draw,Draw,Win,Draw,Win
+Monaco,Tottenham,Draw,Win,Win,Win,Win,Win,Win
+Villareal,Juventus,Draw,Win,Win,Win,Win,Win,Win
