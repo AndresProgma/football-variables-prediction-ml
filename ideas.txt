@@ -29,3 +29,48 @@ IDEAS PENDIENTES — Predicción Champions League
    Calcular EV = (probabilidad_modelo × cuota) - 1 para cada modelo.
    Mostrar si la apuesta tiene valor positivo (EV > 0) o no.
    Solo mostrar alerta si la probabilidad supera el 85% Y el EV es positivo.
+
+6. Expansión a torneos de selecciones (para predictor de Mundial)
+   Fuentes a integrar cuando se haga el salto a selecciones:
+     - WC 2018 (64 partidos)
+     - WC 2022 (64 partidos)
+     - WC Femenino 2019 y 2023
+     - Eurocopa 2020 y 2024
+     - Copa América 2019, 2021 y 2024
+   Total estimado: ~400+ partidos de torneos cortos.
+   Fuente principal recomendada: StatsBomb Open Data (gratis, granularidad mayor a la
+   actual, permite reconstruir las 140 columnas agregando eventos).
+   Alternativas: FIFA.com Match Center (scrapeo con Playwright) y FBref.com (cubre ~70%).
+
+7. Dataset híbrido: Champions como contexto del Mundial
+   Hipótesis: los partidos de clubes (UCL) sirven como contexto/forma reciente de los
+   jugadores que luego juegan con sus selecciones. No descartar el dataset UCL al pasar
+   a selecciones — combinarlo.
+   Estrategia:
+     - Mantener los partidos UCL en el dataset combinado.
+     - Dar MÁS PESO a los partidos de selecciones durante el entrenamiento
+       (sample_weight en sklearn, ej. peso 3.0 selección vs 1.0 club).
+     - Razón: el estilo de juego de una selección difiere del de un club,
+       pero la forma de los jugadores en clubes es señal predictiva.
+   A explorar: ¿conviene agregar feature "es_seleccion" (0/1) para que el modelo
+   aprenda solo la diferencia? ¿O entrenar dos modelos separados y ensamblar?
+
+   RECOMENDACIÓN: empezar con UN SOLO modelo + sample_weight + feature es_seleccion.
+   Razones:
+     - El dataset combinado sigue siendo chico (~450 partidos). Partirlo en dos
+       modelos reduce datos por modelo y pierde la señal cruzada.
+     - Más simple: un pipeline, una predicción.
+     - Modelos de árboles (RF/XGBoost) aprenden solos cuándo el contexto cambia
+       el patrón usando la feature es_seleccion.
+     - sample_weight inclina el aprendizaje sin descartar datos de clubes.
+   Implementación:
+     df["es_seleccion"] = df["Fase"].isin([fases_seleccion]).astype(int)
+     pesos = df["es_seleccion"].map({1: 3.0, 0: 1.0}).values
+     modelo.fit(X_train, y_train, sample_weight=pesos[train_idx])
+   Empezar con peso 3.0 y ajustar entre 2.0-5.0 según accuracy en validación
+   FILTRADA SOLO a partidos de selección.
+
+   Cuándo cambiar a dos modelos ensamblados (plan B):
+     - Si acierta bien en UCL pero falla sistemáticamente en selecciones, O
+     - Si feature_importance muestra que es_seleccion domina demasiado
+       (señal de que los patrones son incompatibles).

@@ -1,23 +1,37 @@
 """
-Agrega un partido nuevo al dataset desde las estadísticas copiadas de UEFA.
+Agrega un partido nuevo al dataset desde las estadísticas de UEFA.
 
-Uso:
+Modos:
     python agregar_partido.py
+        Modo manual: pregunta datos y pide que pegues las stats (flujo original).
 
-El script pregunta Fase, Equipo1 y Equipo2, luego pide que pegues
-las estadísticas tal como aparecen en la página de UEFA.
-Escribe FIN en una línea nueva cuando termines de pegar.
+    python agregar_partido.py --url <URL_PARTIDO>
+        Scrapea automáticamente la URL de un partido de UEFA.com.
+
+    python agregar_partido.py --fecha YYYY-MM-DD
+        Scrapea todos los partidos jugados en esa fecha.
+
+    Flags opcionales:
+        --fase <Liga|Octavos|Cuartos|Semifinal|Final>   Fase por defecto.
+        --no-headless                                   Muestra el navegador.
+        --si                                            Auto-confirma sin preguntar.
+        --debug                                         Guarda debug_uefa.png/txt.
 """
 
+import argparse
 import pandas as pd
 import numpy as np
 import os
+import re
+import subprocess
 import unicodedata
 import sys
 
-# Forzar UTF-8 en la terminal
+# Forzar UTF-8 y line-buffering en la terminal (para ver progreso en vivo)
 if sys.stdout.encoding != 'utf-8':
-    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stdout.reconfigure(encoding='utf-8', line_buffering=True)
+else:
+    sys.stdout.reconfigure(line_buffering=True)
 if sys.stdin.encoding != 'utf-8':
     sys.stdin.reconfigure(encoding='utf-8')
 
@@ -197,16 +211,82 @@ def leer_texto_multilinea():
     return "\n".join(lineas)
 
 
-def main():
+def cargar_dataset():
+    df = pd.read_excel(DATASET)
+    siguiente_id = int(df['Partido_id'].max()) + 1
+    return df, siguiente_id
+
+
+def guardar_partido(df, fila):
+    nueva_fila = pd.DataFrame([fila])
+    df = pd.concat([df, nueva_fila], ignore_index=True)
+    df.to_excel(DATASET, index=False)
+    return df
+
+
+def _normalizar_fecha(f):
+    """Acepta '2025-11-4', '2025-11-04', '04/11/2025' → '2025-11-04'."""
+    if f is None or (isinstance(f, float) and pd.isna(f)):
+        return None
+    s = str(f).strip()
+    m = re.match(r'^(\d{4})-(\d{1,2})-(\d{1,2})', s)
+    if m:
+        y, mo, d = m.groups()
+        return f'{y}-{int(mo):02d}-{int(d):02d}'
+    m = re.match(r'^(\d{1,2})/(\d{1,2})/(\d{4})', s)
+    if m:
+        d, mo, y = m.groups()
+        return f'{y}-{int(mo):02d}-{int(d):02d}'
+    return s
+
+
+def partido_ya_existe(df, equipo1, equipo2, fecha):
+    """Comprueba si ya hay una fila con los mismos equipos y fecha (normalizada)."""
+    if not fecha:
+        return False
+    f_norm = _normalizar_fecha(fecha)
+    fechas_df = df['Fecha'].map(_normalizar_fecha)
+    mask = (
+        (df['Equipo1'].astype(str).str.lower() == str(equipo1).lower()) &
+        (df['Equipo2'].astype(str).str.lower() == str(equipo2).lower()) &
+        (fechas_df == f_norm)
+    )
+    return bool(mask.any())
+
+
+def procesar_partido(df, siguiente_id, fase, equipo1, equipo2, fecha,
+                     texto_stats, auto_confirmar=False):
+    """Parsea las stats, construye la fila y la guarda. Devuelve el df actualizado."""
+    stats = parsear_stats(texto_stats)
+    print(f"  ✓ {len(stats)} estadísticas parseadas")
+
+    fila = construir_fila(siguiente_id, fase, equipo1, equipo2, stats, df.columns)
+    fila['Fecha'] = fecha if fecha else None
+
+    g1 = fila.get('EQUIPO1_GOLES')
+    g2 = fila.get('EQUIPO2_GOLES')
+    g1_str = int(g1) if pd.notna(g1) else '?'
+    g2_str = int(g2) if pd.notna(g2) else '?'
+    print(f"  Resultado: {equipo1} {g1_str} – {g2_str} {equipo2}  |  {fecha or 'sin fecha'}  |  Fase: {fase}")
+
+    if not auto_confirmar:
+        confirmar = input("  ¿Agregar al dataset? (s/n): ").strip().lower()
+        if confirmar != 's':
+            print("  ⤷ Cancelado")
+            return df
+
+    df = guardar_partido(df, fila)
+    print(f"  ✅ Guardado (Partido_id={siguiente_id})")
+    return df
+
+
+def modo_manual():
     print("=" * 55)
     print("  AGREGAR PARTIDO AL DATASET — Champions League")
     print("=" * 55)
 
-    # Cargar dataset existente
-    df = pd.read_excel(DATASET)
-    siguiente_id = int(df['Partido_id'].max()) + 1
+    df, siguiente_id = cargar_dataset()
 
-    # Preguntar datos del partido
     print(f"\nNuevo Partido_id: {siguiente_id}")
     fase    = input("Fase (ej. Grupos, Octavos, Cuartos, Semifinal, Final): ").strip()
     equipo1 = input("Equipo 1 (local / izquierda en la página): ").strip()
@@ -214,36 +294,123 @@ def main():
 
     print(f"\nPartido: {equipo1} vs {equipo2}  |  Fase: {fase}\n")
 
-    # Pegar estadísticas
     texto = leer_texto_multilinea()
+    fecha = input("\nFecha del partido (YYYY-MM-DD) o Enter para omitir: ").strip() or None
 
-    # Parsear
-    stats = parsear_stats(texto)
-    print(f"\n✓ {len(stats)} estadísticas leídas")
+    df = procesar_partido(df, siguiente_id, fase, equipo1, equipo2, fecha, texto)
 
-    # Construir fila
-    fila = construir_fila(siguiente_id, fase, equipo1, equipo2, stats, df.columns)
+    print(f"\n   Dataset ahora tiene {len(df)} partidos.")
+    print(f"   Archivo: {DATASET}")
 
-    # Mostrar resumen
-    goles1 = int(fila.get('EQUIPO1_GOLES', '?'))
-    goles2 = int(fila.get('EQUIPO2_GOLES', '?'))
-    print(f"\nResultado detectado: {equipo1} {goles1} – {goles2} {equipo2}")
 
-    fecha = input("\nFecha del partido (YYYY-MM-DD) o Enter para omitir: ").strip()
-    fila['Fecha'] = fecha if fecha else None
+def modo_url(url, fase, headless=True, auto_confirmar=False, debug=False):
+    from scraper_uefa import obtener_info_partido
 
-    confirmar = input("\n¿Agregar al dataset? (s/n): ").strip().lower()
-    if confirmar != 's':
-        print("Cancelado.")
+    print("=" * 55)
+    print("  AGREGAR PARTIDO DESDE URL")
+    print("=" * 55)
+    print(f"URL: {url}\n")
+
+    info = obtener_info_partido(url, headless=headless, debug=debug)
+
+    df, siguiente_id = cargar_dataset()
+
+    equipo1 = info['equipo1'] or ''
+    equipo2 = info['equipo2'] or ''
+    fecha   = info['fecha']
+    fase_final = fase or 'Liga'
+
+    if not auto_confirmar:
+        nuevo_e1 = input(f"Equipo 1 [{equipo1}]: ").strip()
+        if nuevo_e1:
+            equipo1 = nuevo_e1
+        nuevo_e2 = input(f"Equipo 2 [{equipo2}]: ").strip()
+        if nuevo_e2:
+            equipo2 = nuevo_e2
+        nueva_f = input(f"Fecha [{fecha}]: ").strip()
+        if nueva_f:
+            fecha = nueva_f
+        nueva_fase = input(f"Fase [{fase_final}]: ").strip()
+        if nueva_fase:
+            fase_final = nueva_fase
+
+    if partido_ya_existe(df, equipo1, equipo2, fecha):
+        print(f"⚠️  Ya existe un partido {equipo1} vs {equipo2} en {fecha}. Se omite.")
         return
 
-    # Agregar y guardar
-    nueva_fila = pd.DataFrame([fila])
-    df = pd.concat([df, nueva_fila], ignore_index=True)
-    df.to_excel(DATASET, index=False)
+    print(f"\nProcesando Partido_id {siguiente_id}: {equipo1} vs {equipo2}")
+    df = procesar_partido(
+        df, siguiente_id, fase_final, equipo1, equipo2, fecha,
+        info['texto_stats'], auto_confirmar=auto_confirmar,
+    )
+    print(f"\n   Dataset ahora tiene {len(df)} partidos.")
 
-    print(f"\n✅ Partido guardado. El dataset ahora tiene {len(df)} partidos.")
-    print(f"   Archivo: {DATASET}")
+
+def modo_fecha(fecha, fase, headless=True, auto_confirmar=False, debug=False):
+    """
+    Procesa los partidos de una fecha llamando a este mismo script en subprocess
+    para cada URL. Cada partido = un proceso Python fresco, así no se acumulan
+    recursos de Chromium y el proceso largo nunca se cuelga.
+    """
+    from scraper_uefa import listar_partidos_por_fecha
+
+    print("=" * 55)
+    print(f"  PROCESAR PARTIDOS DEL {fecha}")
+    print("=" * 55)
+
+    urls = listar_partidos_por_fecha(fecha, headless=headless)
+    if not urls:
+        print(f"No se encontraron partidos para {fecha}. ¿Está bien escrita la fecha?")
+        return
+    print(f"Encontrados {len(urls)} partidos del {fecha}:\n")
+    for u in urls:
+        print(f"  - {u}")
+    print()
+
+    fase_final = fase or 'Liga'
+    script = os.path.abspath(__file__)
+
+    for i, url in enumerate(urls, 1):
+        print(f"\n[{i}/{len(urls)}] {url}")
+        cmd = [sys.executable, '-u', script, '--url', url, '--fase', fase_final]
+        if auto_confirmar:
+            cmd.append('--si')
+        if not headless:
+            cmd.append('--no-headless')
+        if debug:
+            cmd.append('--debug')
+        try:
+            subprocess.run(cmd, check=False)
+        except KeyboardInterrupt:
+            print("\nInterrumpido por el usuario.")
+            return
+
+    # Resumen final leyendo el dataset
+    df, _ = cargar_dataset()
+    print(f"\n{'=' * 55}")
+    print(f"  Procesamiento completado.")
+    print(f"  Dataset ahora tiene {len(df)} partidos.")
+    print(f"  Archivo: {DATASET}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('--url', help='URL de un partido de UEFA.com')
+    parser.add_argument('--fecha', help='Fecha YYYY-MM-DD: procesa todos los partidos del día')
+    parser.add_argument('--fase', help='Fase del torneo (Liga, Octavos, Cuartos, Semifinal, Final)')
+    parser.add_argument('--no-headless', action='store_true', help='Muestra el navegador (para depurar)')
+    parser.add_argument('--si', action='store_true', help='Auto-confirma cada inserción')
+    parser.add_argument('--debug', action='store_true', help='Guarda debug_uefa.png y .txt en cada scrape')
+    args = parser.parse_args()
+
+    headless = not args.no_headless
+
+    if args.url:
+        modo_url(args.url, args.fase, headless=headless, auto_confirmar=args.si, debug=args.debug)
+    elif args.fecha:
+        modo_fecha(args.fecha, args.fase, headless=headless, auto_confirmar=args.si, debug=args.debug)
+    else:
+        modo_manual()
 
 
 if __name__ == "__main__":

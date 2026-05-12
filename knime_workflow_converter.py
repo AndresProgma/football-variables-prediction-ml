@@ -30,7 +30,7 @@ from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.metrics import accuracy_score, classification_report, mean_absolute_error
-from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.model_selection import StratifiedKFold, TimeSeriesSplit, cross_val_score
 from sklearn.pipeline import Pipeline
 from xgboost import XGBClassifier, XGBRegressor
 import warnings
@@ -411,12 +411,17 @@ def evaluate_models(models, predictions, y_test, class_labels=None):
 # 10B. CROSS-VALIDATION — accuracy estable con pocos datos
 # ============================================================================
 def cross_validate_models(X, y, n_splits=5, random_state=42):
-    """Evalúa clasificadores con StratifiedKFold para obtener accuracy estable."""
+    """
+    Walk-forward validation: respeta el orden cronológico del dataset.
+    Cada fold entrena solo con partidos ANTERIORES a los del test.
+    Esto da el accuracy real que verás al predecir partidos futuros.
+    Requisito: X e y deben venir ordenados por Fecha ascendente.
+    """
     print("\n" + "="*60)
-    print(f"CROSS-VALIDATION ({n_splits} folds)")
+    print(f"VALIDACIÓN TEMPORAL WALK-FORWARD ({n_splits} folds)")
     print("="*60)
 
-    cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
+    cv = TimeSeriesSplit(n_splits=n_splits)
 
     scaler = StandardScaler()
 
@@ -493,6 +498,17 @@ def main(filepath, test_size=0.2, random_state=42):
     # 1-7. Carga, limpieza, transformación y enriquecimiento
     df = load_data(filepath)
     df = select_columns(df)
+
+    # Orden cronológico — crítico para que la validación temporal funcione.
+    # Si Fecha no existe o tiene huecos, caemos a Partido_id como proxy.
+    if 'Fecha' in df.columns:
+        df['_fecha_orden'] = pd.to_datetime(df['Fecha'], errors='coerce')
+        df = df.sort_values(by=['_fecha_orden', 'Partido_id'], na_position='last')
+        df = df.drop(columns=['_fecha_orden']).reset_index(drop=True)
+    else:
+        df = df.sort_values('Partido_id').reset_index(drop=True)
+    print(f"   ✓ Dataset ordenado cronológicamente (más antiguo → más reciente)")
+
     df = handle_missing_values(df, strategy='mean')
     df = create_derived_variables(df)
     df = filter_rows(df)
@@ -529,11 +545,13 @@ def main(filepath, test_size=0.2, random_state=42):
     print(f"   ✓ Features: {X.shape[1]} | Partidos: {y.shape[0]}")
     print(f"   Distribución clases: {dict(zip(class_labels, [int((y==i).sum()) for i in range(len(class_labels))]))}")
 
-    # 10. Train-test split (estratificado para respetar proporción de clases)
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state, stratify=y
-    )
-    print(f"\n🔀 Split: {len(X_train)} train — {len(X_test)} test")
+    # 10. Split CRONOLÓGICO: primeros 80 % entrenan, últimos 20 % validan.
+    # El dataset ya viene ordenado por fecha desde main(), así que slice directo.
+    n = len(X)
+    n_train = int(n * (1 - test_size))
+    X_train, X_test = X.iloc[:n_train], X.iloc[n_train:]
+    y_train, y_test = y.iloc[:n_train], y.iloc[n_train:]
+    print(f"\n🔀 Split cronológico: {len(X_train)} train (antiguos) — {len(X_test)} test (recientes)")
 
     # 11. Cross-validation antes de entrenar el modelo final
     cv_results = cross_validate_models(X, y)
@@ -766,7 +784,7 @@ if __name__ == "__main__":
         print("   " + " | ".join(equipos))
 
         # ── Predicciones de partidos futuros ─────────────────────────────
-        predecir_partido("Paris",  "Bayern Munchen",       results)
+        predecir_partido("Copengagen",  "Kairat Almaty",       results)
         predecir_partido("Atleti",    "Union SG", results)
         predecir_partido("Juventus",    "Sporting CP",          results)
 
