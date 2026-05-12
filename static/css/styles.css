@@ -1,0 +1,21 @@
+/* Custom overrides — Tailwind se encarga del 95% */
+
+body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+
+/* Scrollbar oscura para combinar con el dashboard */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #252e47; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #374161; }
+
+/* Chart.js fijo para no estirarse */
+#chart-consenso { max-height: 240px; }
+
+/* Animación leve al cargar predicción */
+#resultado:not(.hidden) {
+  animation: fadeIn 0.3s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

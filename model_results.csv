@@ -1,7 +1,0 @@
-Model,Accuracy
-Random Forest,0.4167
-Gradient Boosting,0.4167
-Logistic Regression,0.25
-SVM,0.5833
-XGBoost,0.5
-KNN,0.5

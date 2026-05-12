@@ -1,0 +1,23 @@
+# Render.com Blueprint — un click deploy desde GitHub.
+# https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: ucl-predictor
+    runtime: docker
+    plan: free
+    region: oregon
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+    # SQLite vive en /app/futbol.db dentro del contenedor.
+    # Para persistencia entre deploys, descomenta y crea un disk en Render:
+    # disk:
+    #   name: data
+    #   mountPath: /app/data
+    #   sizeGB: 1

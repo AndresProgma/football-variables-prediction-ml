@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UCL Predictor · Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="/static/css/styles.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand:   { 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' },
+            surface: { 900: '#0b0f1a', 800: '#111727', 700: '#1a2236', 600: '#252e47' },
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="bg-surface-900 text-slate-100 h-full antialiased">
+  <!-- TOP BAR -->
+  <header class="border-b border-surface-700 bg-surface-800/80 backdrop-blur sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-lg font-bold">⚽</div>
+        <div>
+          <h1 class="text-lg font-semibold tracking-tight">UCL Predictor</h1>
+          <p class="text-xs text-slate-400">Champions League · Modelos de ML</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-4 text-xs">
+        <span id="eval-pill" class="px-3 py-1.5 rounded-full bg-surface-700 text-slate-300 border border-surface-600">
+          Evaluación: <span id="eval-id-text" class="font-mono">—</span>
+        </span>
+        <button id="btn-evaluar" class="px-3 py-1.5 rounded-md bg-brand-600 hover:bg-brand-500 transition text-white text-xs font-medium">
+          Reentrenar
+        </button>
+        <span id="health" class="text-emerald-400">●</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- LOADING OVERLAY -->
+  <div id="loading" class="hidden fixed inset-0 bg-surface-900/80 backdrop-blur z-50 flex items-center justify-center">
+    <div class="bg-surface-800 border border-surface-700 px-6 py-5 rounded-xl flex items-center gap-3">
+      <div class="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+      <span id="loading-text" class="text-sm">Procesando...</span>
+    </div>
+  </div>
+
+  <main class="max-w-7xl mx-auto px-6 py-8 space-y-8">
+
+    <!-- KPI CARDS -->
+    <section id="kpis" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <!-- llenado por JS -->
+    </section>
+
+    <!-- PREDICTOR -->
+    <section class="bg-surface-800 border border-surface-700 rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h2 class="text-base font-semibold">Predictor interactivo</h2>
+          <p class="text-xs text-slate-400">Selecciona dos equipos y obtén probabilidades de los 6 modelos + consenso</p>
+        </div>
+      </div>
+
+      <form id="form-predecir" class="grid grid-cols-1 md:grid-cols-5 gap-3 mb-6">
+        <div class="md:col-span-2">
+          <label class="block text-xs text-slate-400 mb-1">Equipo 1 (local)</label>
+          <select id="sel-e1" class="w-full bg-surface-900 border border-surface-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500"></select>
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-xs text-slate-400 mb-1">Equipo 2 (visitante)</label>
+          <select id="sel-e2" class="w-full bg-surface-900 border border-surface-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500"></select>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Fase</label>
+          <select id="sel-fase" class="w-full bg-surface-900 border border-surface-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500">
+            <option value="Liga">Liga</option>
+            <option value="Octavos">Octavos</option>
+            <option value="Cuartos">Cuartos</option>
+            <option value="Semifinal">Semifinal</option>
+            <option value="Final">Final (sede neutral)</option>
+          </select>
+        </div>
+        <div class="md:col-span-5 flex items-center gap-3">
+          <label class="text-xs text-slate-400 flex items-center gap-2">
+            n_runs:
+            <input id="inp-runs" type="number" min="1" max="50" value="20"
+                   class="w-16 bg-surface-900 border border-surface-600 rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-brand-500" />
+          </label>
+          <button type="submit" class="ml-auto px-5 py-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium transition">
+            Predecir
+          </button>
+        </div>
+      </form>
+
+      <!-- RESULTADO PREDICCIÓN -->
+      <div id="resultado" class="hidden space-y-5">
+        <!-- header con ELO -->
+        <div class="grid grid-cols-3 items-center gap-4 bg-surface-900/50 border border-surface-700 rounded-xl p-5">
+          <div class="text-center">
+            <div id="r-e1" class="text-base font-semibold"></div>
+            <div class="text-xs text-slate-400 mt-1">ELO</div>
+            <div id="r-elo1" class="text-2xl font-mono mt-0.5"></div>
+            <div id="r-forma1" class="text-xs text-slate-400 mt-2 font-mono"></div>
+          </div>
+          <div class="text-center">
+            <div id="r-consenso-pred" class="text-3xl font-bold tracking-tight"></div>
+            <div class="text-xs text-slate-400 mt-1">consenso</div>
+            <div id="r-diff" class="text-xs text-slate-500 mt-1 font-mono"></div>
+            <div id="r-h2h" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <button id="btn-guardar-track" class="mt-3 px-3 py-1 rounded-md bg-emerald-600/80 hover:bg-emerald-500 text-white text-xs font-medium transition">
+              📌 Guardar para track record
+            </button>
+          </div>
+          <div class="text-center">
+            <div id="r-e2" class="text-base font-semibold"></div>
+            <div class="text-xs text-slate-400 mt-1">ELO</div>
+            <div id="r-elo2" class="text-2xl font-mono mt-0.5"></div>
+            <div id="r-forma2" class="text-xs text-slate-400 mt-2 font-mono"></div>
+          </div>
+        </div>
+
+        <!-- gráfico probas + tabla modelos -->
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <div class="lg:col-span-2 bg-surface-900/50 border border-surface-700 rounded-xl p-5">
+            <h3 class="text-sm font-semibold mb-3">Probabilidades del consenso</h3>
+            <canvas id="chart-consenso"></canvas>
+          </div>
+          <div class="lg:col-span-3 bg-surface-900/50 border border-surface-700 rounded-xl p-5">
+            <h3 class="text-sm font-semibold mb-3">Detalle por modelo</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="text-xs text-slate-400 uppercase border-b border-surface-700">
+                  <tr>
+                    <th class="text-left py-2 px-2">Modelo</th>
+                    <th class="text-center py-2 px-2">Pred</th>
+                    <th class="text-right py-2 px-2">Win</th>
+                    <th class="text-right py-2 px-2">Draw</th>
+                    <th class="text-right py-2 px-2">Loss</th>
+                  </tr>
+                </thead>
+                <tbody id="tbl-modelos"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- marcadores predichos -->
+        <div class="bg-surface-900/50 border border-surface-700 rounded-xl p-5">
+          <h3 class="text-sm font-semibold mb-3">Marcadores estimados (regresores)</h3>
+          <div id="goles" class="grid grid-cols-2 md:grid-cols-2 gap-3"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RANKING ELO + MÉTRICAS DEL MODELO -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="bg-surface-800 border border-surface-700 rounded-2xl p-6">
+        <h2 class="text-base font-semibold mb-1">Ranking ELO</h2>
+        <p class="text-xs text-slate-400 mb-4">Calculado incremental sobre todos los partidos</p>
+        <div class="overflow-y-auto max-h-96" id="ranking-wrap">
+          <table class="w-full text-sm">
+            <thead class="text-xs text-slate-400 uppercase sticky top-0 bg-surface-800">
+              <tr>
+                <th class="text-left py-2 px-2">#</th>
+                <th class="text-left py-2 px-2">Equipo</th>
+                <th class="text-right py-2 px-2">ELO</th>
+                <th class="py-2 px-2 w-1/3"></th>
+              </tr>
+            </thead>
+            <tbody id="tbl-elo"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="bg-surface-800 border border-surface-700 rounded-2xl p-6">
+        <h2 class="text-base font-semibold mb-1">Métricas de los modelos</h2>
+        <p class="text-xs text-slate-400 mb-4">CV walk-forward (3 folds, ~24 partidos/test)</p>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-xs text-slate-400 uppercase border-b border-surface-700">
+              <tr>
+                <th class="text-left py-2 px-2">Modelo</th>
+                <th class="text-right py-2 px-2">CV Acc</th>
+                <th class="text-right py-2 px-2">CV F1</th>
+                <th class="text-right py-2 px-2">Último fold</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-metricas"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURE IMPORTANCE -->
+    <section class="bg-surface-800 border border-surface-700 rounded-2xl p-6">
+      <h2 class="text-base font-semibold mb-1">Qué mira el modelo</h2>
+      <p class="text-xs text-slate-400 mb-4">Top 15 features que más usa el Random Forest para decidir</p>
+      <div id="feature-importance" class="space-y-2"></div>
+    </section>
+
+    <!-- TRACK RECORD PÚBLICO (predicciones guardadas vs real) -->
+    <section class="bg-surface-800 border border-surface-700 rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-base font-semibold">Track record público</h2>
+          <p class="text-xs text-slate-400">Predicciones guardadas, auto-resueltas cuando llega el resultado</p>
+        </div>
+        <div id="track-summary" class="text-right text-xs"></div>
+      </div>
+      <div class="grid grid-cols-3 gap-3 mb-4" id="track-kpis"></div>
+      <div class="overflow-y-auto max-h-80">
+        <table class="w-full text-sm">
+          <thead class="text-xs text-slate-400 uppercase sticky top-0 bg-surface-800">
+            <tr>
+              <th class="text-left py-2 px-2">Fecha</th>
+              <th class="text-left py-2 px-2">Partido</th>
+              <th class="text-center py-2 px-2">Pred</th>
+              <th class="text-right py-2 px-2">Confianza</th>
+              <th class="text-center py-2 px-2">Real</th>
+              <th class="text-center py-2 px-2">Estado</th>
+            </tr>
+          </thead>
+          <tbody id="tbl-track-publico"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TEST PREDICTIONS vs ACTUAL -->
+    <section class="bg-surface-800 border border-surface-700 rounded-2xl p-6">
+      <h2 class="text-base font-semibold mb-1">Track record (test cronológico)</h2>
+      <p class="text-xs text-slate-400 mb-4">Predicciones vs resultado real en los partidos más recientes</p>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="text-xs text-slate-400 uppercase border-b border-surface-700">
+            <tr>
+              <th class="text-left py-2 px-2">Equipo 1</th>
+              <th class="text-left py-2 px-2">Equipo 2</th>
+              <th class="text-center py-2 px-2">Real</th>
+              <th class="text-center py-2 px-2">RF</th>
+              <th class="text-center py-2 px-2">GB</th>
+              <th class="text-center py-2 px-2">LR</th>
+              <th class="text-center py-2 px-2">SVM</th>
+              <th class="text-center py-2 px-2">XGB</th>
+              <th class="text-center py-2 px-2">KNN</th>
+            </tr>
+          </thead>
+          <tbody id="tbl-track"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- HISTORIAL -->
+    <section class="bg-surface-800 border border-surface-700 rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-base font-semibold">Historial de partidos</h2>
+          <p class="text-xs text-slate-400">Dataset completo del modelo</p>
+        </div>
+        <input id="filtro-historial" type="text" placeholder="Filtrar..."
+               class="bg-surface-900 border border-surface-600 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-brand-500" />
+      </div>
+      <div class="overflow-y-auto max-h-96">
+        <table class="w-full text-sm">
+          <thead class="text-xs text-slate-400 uppercase sticky top-0 bg-surface-800">
+            <tr>
+              <th class="text-left py-2 px-2">Fecha</th>
+              <th class="text-left py-2 px-2">Fase</th>
+              <th class="text-left py-2 px-2">Equipo 1</th>
+              <th class="text-center py-2 px-2">Marcador</th>
+              <th class="text-left py-2 px-2">Equipo 2</th>
+            </tr>
+          </thead>
+          <tbody id="tbl-historial"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="text-center text-xs text-slate-500 py-6">
+      Modelo entrenado con TimeSeriesSplit walk-forward · class_weight balanced · SelectKBest · ELO incremental
+    </footer>
+  </main>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

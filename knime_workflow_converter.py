@@ -29,10 +29,275 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.metrics import accuracy_score, classification_report, mean_absolute_error
-from sklearn.model_selection import StratifiedKFold, TimeSeriesSplit, cross_val_score
+from sklearn.feature_selection import SelectKBest, f_classif
+from sklearn.metrics import accuracy_score, classification_report, mean_absolute_error, f1_score
+from sklearn.model_selection import StratifiedKFold, TimeSeriesSplit, cross_val_score, cross_validate
 from sklearn.pipeline import Pipeline
 from xgboost import XGBClassifier, XGBRegressor
+
+K_FEATURES = 25  # top features según ANOVA-F dentro de cada fold (evita curse of dimensionality)
+
+
+def build_classifiers(seed=42, n_features=None):
+    """Pipelines con SelectKBest + clasificador balanceado.
+    SelectKBest se ajusta dentro del pipeline → no hay leakage en CV.
+    class_weight='balanced' compensa la subrepresentación de Draw.
+    """
+    k = min(K_FEATURES, n_features) if n_features else K_FEATURES
+    sk = lambda: SelectKBest(f_classif, k=k)
+    return {
+        'Random Forest':       Pipeline([('sk', sk()),
+                                         ('rf', RandomForestClassifier(
+                                             n_estimators=200, max_depth=5, min_samples_leaf=3,
+                                             class_weight='balanced',
+                                             random_state=seed, n_jobs=-1))]),
+        'Gradient Boosting':   Pipeline([('sk', sk()),
+                                         ('gb', GradientBoostingClassifier(
+                                             n_estimators=100, max_depth=3, min_samples_leaf=3,
+                                             random_state=seed))]),
+        'Logistic Regression': Pipeline([('sc', StandardScaler()), ('sk', sk()),
+                                         ('lr', LogisticRegression(
+                                             max_iter=2000, C=0.3, class_weight='balanced',
+                                             random_state=seed))]),
+        'SVM':                 Pipeline([('sc', StandardScaler()), ('sk', sk()),
+                                         ('svm', SVC(
+                                             kernel='rbf', C=0.5, class_weight='balanced',
+                                             probability=True, random_state=seed))]),
+        'XGBoost':             Pipeline([('sk', sk()),
+                                         ('xgb', XGBClassifier(
+                                             n_estimators=100, max_depth=3, learning_rate=0.1,
+                                             reg_lambda=1.0, random_state=seed,
+                                             eval_metric='mlogloss', verbosity=0))]),
+        'KNN':                 Pipeline([('sc', StandardScaler()), ('sk', sk()),
+                                         ('knn', KNeighborsClassifier(
+                                             n_neighbors=5, weights='distance'))]),
+    }
+
+
+ELO_BASE = 1500
+ELO_K = 30           # qué tan rápido reacciona (estándar football: 20-32)
+ELO_HOME_ADV = 60    # ventaja de local en puntos ELO (ClubElo usa ~60)
+
+
+def compute_elo_features(df):
+    """
+    Calcula ELO incremental recorriendo partidos en orden cronológico.
+    Para cada fila agrega ELO_E1, ELO_E2 y Diff_ELO con el rating ANTES
+    del partido (sin leakage). Luego actualiza los ratings con el resultado.
+
+    Bonus por margen de goles: 1x si ≤1 gol, 1.5x si 2, 1.75x+0.1*extra si ≥3.
+    Devuelve también el dict de ELO finales para usar en predicciones futuras.
+    """
+    print("📈 Calculando ELO incremental...")
+    df = df.copy()
+    elos = {}
+    elo_e1_list, elo_e2_list = [], []
+
+    for _, row in df.iterrows():
+        e1, e2 = row['Equipo1'], row['Equipo2']
+        elo_e1 = elos.get(e1, ELO_BASE)
+        elo_e2 = elos.get(e2, ELO_BASE)
+        elo_e1_list.append(elo_e1)
+        elo_e2_list.append(elo_e2)
+
+        g1, g2 = row.get('EQUIPO1_GOLES'), row.get('EQUIPO2_GOLES')
+        if pd.isna(g1) or pd.isna(g2):
+            continue  # partido sin jugar todavía → no actualiza
+
+        es_local = int(row.get('Es_Local_E1', 1)) if pd.notna(row.get('Es_Local_E1')) else 1
+        adv = ELO_HOME_ADV * es_local
+
+        # Probabilidad esperada de victoria de E1
+        expected_e1 = 1 / (1 + 10 ** ((elo_e2 - elo_e1 - adv) / 400))
+
+        # Resultado real (1 / 0.5 / 0)
+        s1 = 1.0 if g1 > g2 else (0.0 if g1 < g2 else 0.5)
+
+        # Multiplicador por margen de goles
+        gd = abs(g1 - g2)
+        margin = 1.0 if gd <= 1 else (1.5 if gd == 2 else 1.75 + (gd - 3) * 0.1)
+
+        delta = ELO_K * margin * (s1 - expected_e1)
+        elos[e1] = elo_e1 + delta
+        elos[e2] = elo_e2 - delta
+
+    df['ELO_E1'] = elo_e1_list
+    df['ELO_E2'] = elo_e2_list
+    df['Diff_ELO'] = df['ELO_E1'] - df['ELO_E2']
+
+    top5 = sorted(elos.items(), key=lambda x: -x[1])[:5]
+    bot5 = sorted(elos.items(), key=lambda x: x[1])[:5]
+    print(f"   ✓ ELO calculado para {len(elos)} equipos")
+    print(f"   Top 5: " + ' · '.join(f'{t} {int(e)}' for t, e in top5))
+    print(f"   Bot 5: " + ' · '.join(f'{t} {int(e)}' for t, e in bot5))
+
+    return df, elos
+
+
+# ============================================================================
+# Features pre-partido avanzadas: forma reciente, descanso, head-to-head
+# ============================================================================
+
+FORMA_WINDOW = 5      # últimos N partidos
+H2H_WINDOW = 3        # últimos N enfrentamientos directos
+
+
+def compute_form_features(df):
+    """
+    Para cada partido calcula la forma reciente de ambos equipos basada en
+    los últimos FORMA_WINDOW partidos (jugados como local O visitante).
+    Usa SOLO partidos anteriores (sin leakage).
+
+    Agrega columnas: Forma_W_E1, Forma_D_E1, Forma_L_E1, Forma_GF_E1,
+    Forma_GC_E1, Forma_Pts_E1 (+ equivalentes _E2),
+    Diff_Forma_Pts, Diff_Forma_GD, Dias_Descanso_E1/_E2.
+
+    Devuelve también un dict por equipo con su historial completo, para que
+    predecir_partido() pueda reconstruir las features de partidos futuros.
+    """
+    print("📊 Calculando forma reciente y descanso...")
+    df = df.copy()
+    if 'Fecha' in df.columns:
+        df['_fecha_dt'] = pd.to_datetime(df['Fecha'], errors='coerce')
+    else:
+        df['_fecha_dt'] = pd.NaT
+
+    # Historial por equipo: lista de dicts con {fecha, gf, gc, resultado}
+    historial = {}
+
+    cols = ['Forma_W_E1', 'Forma_D_E1', 'Forma_L_E1', 'Forma_GF_E1', 'Forma_GC_E1', 'Forma_Pts_E1',
+            'Forma_W_E2', 'Forma_D_E2', 'Forma_L_E2', 'Forma_GF_E2', 'Forma_GC_E2', 'Forma_Pts_E2',
+            'Dias_Descanso_E1', 'Dias_Descanso_E2',
+            'Diff_Forma_Pts', 'Diff_Forma_GD']
+    rows = {c: [] for c in cols}
+
+    def resumen(hist):
+        last = hist[-FORMA_WINDOW:] if hist else []
+        w = sum(1 for h in last if h['res'] == 'W')
+        d = sum(1 for h in last if h['res'] == 'D')
+        l = sum(1 for h in last if h['res'] == 'L')
+        gf = sum(h['gf'] for h in last) if last else 0
+        gc = sum(h['gc'] for h in last) if last else 0
+        pts = w * 3 + d
+        return w, d, l, gf, gc, pts
+
+    for _, row in df.iterrows():
+        e1, e2 = row['Equipo1'], row['Equipo2']
+        fecha = row['_fecha_dt']
+
+        # Forma actual (antes del partido)
+        w1, d1, l1, gf1, gc1, pts1 = resumen(historial.get(e1, []))
+        w2, d2, l2, gf2, gc2, pts2 = resumen(historial.get(e2, []))
+        rows['Forma_W_E1'].append(w1); rows['Forma_D_E1'].append(d1); rows['Forma_L_E1'].append(l1)
+        rows['Forma_GF_E1'].append(gf1); rows['Forma_GC_E1'].append(gc1); rows['Forma_Pts_E1'].append(pts1)
+        rows['Forma_W_E2'].append(w2); rows['Forma_D_E2'].append(d2); rows['Forma_L_E2'].append(l2)
+        rows['Forma_GF_E2'].append(gf2); rows['Forma_GC_E2'].append(gc2); rows['Forma_Pts_E2'].append(pts2)
+        rows['Diff_Forma_Pts'].append(pts1 - pts2)
+        rows['Diff_Forma_GD'].append((gf1 - gc1) - (gf2 - gc2))
+
+        # Días de descanso (desde último partido)
+        for equipo, key in [(e1, 'Dias_Descanso_E1'), (e2, 'Dias_Descanso_E2')]:
+            h = historial.get(equipo, [])
+            if h and pd.notna(fecha) and h[-1]['fecha'] is not pd.NaT and pd.notna(h[-1]['fecha']):
+                dias = (fecha - h[-1]['fecha']).days
+                rows[key].append(max(0, int(dias)))
+            else:
+                rows[key].append(7)  # default razonable (semana)
+
+        # Actualizar historial con el resultado real
+        g1, g2 = row.get('EQUIPO1_GOLES'), row.get('EQUIPO2_GOLES')
+        if pd.notna(g1) and pd.notna(g2):
+            res1 = 'W' if g1 > g2 else ('L' if g1 < g2 else 'D')
+            res2 = 'W' if g2 > g1 else ('L' if g2 < g1 else 'D')
+            historial.setdefault(e1, []).append({'fecha': fecha, 'gf': int(g1), 'gc': int(g2), 'res': res1})
+            historial.setdefault(e2, []).append({'fecha': fecha, 'gf': int(g2), 'gc': int(g1), 'res': res2})
+
+    for c, vals in rows.items():
+        df[c] = vals
+    df = df.drop(columns=['_fecha_dt'])
+
+    print(f"   ✓ Forma calculada para {len(historial)} equipos (ventana={FORMA_WINDOW})")
+    return df, historial
+
+
+def compute_h2h_features(df):
+    """
+    Para cada partido cuenta los últimos H2H_WINDOW enfrentamientos directos
+    entre los dos equipos (en cualquier orden de local/visitante). Sin leakage.
+
+    Agrega: H2H_W_E1, H2H_D, H2H_L_E1, H2H_GF_E1, H2H_GC_E1 (todos sobre los
+    últimos H2H_WINDOW partidos entre ambos).
+
+    Devuelve dict {(e1,e2): [partidos]} ordenado para reconstruir en predicción.
+    """
+    print("🤝 Calculando head-to-head...")
+    df = df.copy()
+    h2h_log = {}   # key: frozenset({e1,e2}) → lista de partidos en orden
+
+    cols = ['H2H_W_E1', 'H2H_D', 'H2H_L_E1', 'H2H_GF_E1', 'H2H_GC_E1', 'H2H_N']
+    rows = {c: [] for c in cols}
+
+    for _, row in df.iterrows():
+        e1, e2 = row['Equipo1'], row['Equipo2']
+        key = frozenset({e1, e2})
+        previos = h2h_log.get(key, [])[-H2H_WINDOW:]
+        w, d, l, gf, gc = 0, 0, 0, 0, 0
+        for p in previos:
+            # Resultado desde la perspectiva de E1
+            if p['equipo1'] == e1:
+                g_propios, g_rival = p['g1'], p['g2']
+            else:
+                g_propios, g_rival = p['g2'], p['g1']
+            gf += g_propios
+            gc += g_rival
+            if g_propios > g_rival: w += 1
+            elif g_propios < g_rival: l += 1
+            else: d += 1
+        rows['H2H_W_E1'].append(w); rows['H2H_D'].append(d); rows['H2H_L_E1'].append(l)
+        rows['H2H_GF_E1'].append(gf); rows['H2H_GC_E1'].append(gc); rows['H2H_N'].append(len(previos))
+
+        # Registrar este partido para futuros H2H
+        g1, g2 = row.get('EQUIPO1_GOLES'), row.get('EQUIPO2_GOLES')
+        if pd.notna(g1) and pd.notna(g2):
+            h2h_log.setdefault(key, []).append({
+                'equipo1': e1, 'equipo2': e2,
+                'g1': int(g1), 'g2': int(g2),
+            })
+
+    for c, vals in rows.items():
+        df[c] = vals
+    print(f"   ✓ H2H calculado para {len(h2h_log)} pares de equipos (ventana={H2H_WINDOW})")
+    return df, h2h_log
+
+
+def resumen_forma(hist_equipo, window=FORMA_WINDOW):
+    """Helper para predecir_partido: resume el historial de un equipo."""
+    last = (hist_equipo or [])[-window:]
+    w = sum(1 for h in last if h['res'] == 'W')
+    d = sum(1 for h in last if h['res'] == 'D')
+    l = sum(1 for h in last if h['res'] == 'L')
+    gf = sum(h['gf'] for h in last) if last else 0
+    gc = sum(h['gc'] for h in last) if last else 0
+    return {'w': w, 'd': d, 'l': l, 'gf': gf, 'gc': gc, 'pts': w * 3 + d}
+
+
+def resumen_h2h(h2h_log, e1, e2, window=H2H_WINDOW):
+    """Helper para predecir_partido: resume el head-to-head entre dos equipos."""
+    key = frozenset({e1, e2})
+    previos = (h2h_log.get(key) or [])[-window:]
+    w, d, l, gf, gc = 0, 0, 0, 0, 0
+    for p in previos:
+        if p['equipo1'] == e1:
+            g_propios, g_rival = p['g1'], p['g2']
+        else:
+            g_propios, g_rival = p['g2'], p['g1']
+        gf += g_propios; gc += g_rival
+        if g_propios > g_rival: w += 1
+        elif g_propios < g_rival: l += 1
+        else: d += 1
+    return {'w': w, 'd': d, 'l': l, 'gf': gf, 'gc': gc, 'n': len(previos)}
+
+
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -56,6 +321,15 @@ def select_columns(df):
     
     columns_to_keep = [
         'Equipo1', 'Equipo2', 'Es_Local_E1', 'EQUIPO1_GOLES', 'EQUIPO2_GOLES',
+        # ELO pre-partido (calculado en compute_elo_features)
+        'ELO_E1', 'ELO_E2', 'Diff_ELO',
+        # Forma últimos 5 partidos (calculado en compute_form_features)
+        'Forma_W_E1', 'Forma_D_E1', 'Forma_L_E1', 'Forma_GF_E1', 'Forma_GC_E1', 'Forma_Pts_E1',
+        'Forma_W_E2', 'Forma_D_E2', 'Forma_L_E2', 'Forma_GF_E2', 'Forma_GC_E2', 'Forma_Pts_E2',
+        'Diff_Forma_Pts', 'Diff_Forma_GD',
+        'Dias_Descanso_E1', 'Dias_Descanso_E2',
+        # Head-to-head últimos 3 enfrentamientos (compute_h2h_features)
+        'H2H_W_E1', 'H2H_D', 'H2H_L_E1', 'H2H_GF_E1', 'H2H_GC_E1', 'H2H_N',
         # Goles detallados
         'Goles_dentro_area_E1', 'Goles_Fuera_Area_E1',
         'Goles_dentro_area_E2', 'Goles_Fuera_Area_E2',
@@ -329,53 +603,15 @@ def prepare_for_modeling(df):
 # 9. ENTRENAR MODELOS — CLASIFICACIÓN (Win / Draw / Loss)
 # ============================================================================
 def train_models(X_train, y_train, X_test, y_test):
-    """Entrena 3 clasificadores para predecir resultado del partido"""
+    """Entrena los clasificadores balanceados sobre el split cronológico."""
     print("🎓 Entrenando modelos de clasificación...")
 
-    models = {}
+    models = build_classifiers(seed=42, n_features=X_train.shape[1])
     predictions = {}
-
-    print("   - Entrenando Random Forest...")
-    rf = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
-    rf.fit(X_train, y_train)
-    models['Random Forest'] = rf
-    predictions['Random Forest'] = rf.predict(X_test)
-
-    print("   - Entrenando Gradient Boosting...")
-    gb = GradientBoostingClassifier(n_estimators=100, random_state=42)
-    gb.fit(X_train, y_train)
-    models['Gradient Boosting'] = gb
-    predictions['Gradient Boosting'] = gb.predict(X_test)
-
-    print("   - Entrenando Logistic Regression...")
-    lr = LogisticRegression(max_iter=1000, random_state=42)
-    lr.fit(X_train, y_train)
-    models['Logistic Regression'] = lr
-    predictions['Logistic Regression'] = lr.predict(X_test)
-
-    # SVM necesita features escaladas
-    scaler = StandardScaler()
-    X_train_sc = scaler.fit_transform(X_train)
-    X_test_sc  = scaler.transform(X_test)
-
-    print("   - Entrenando SVM...")
-    svm = SVC(kernel='rbf', C=1, probability=True, random_state=42)
-    svm.fit(X_train_sc, y_train)
-    models['SVM'] = (svm, scaler)
-    predictions['SVM'] = svm.predict(X_test_sc)
-
-    print("   - Entrenando XGBoost...")
-    xgb = XGBClassifier(n_estimators=100, max_depth=3, learning_rate=0.1,
-                         random_state=42, eval_metric='mlogloss', verbosity=0)
-    xgb.fit(X_train, y_train)
-    models['XGBoost'] = xgb
-    predictions['XGBoost'] = xgb.predict(X_test)
-
-    print("   - Entrenando KNN...")
-    knn = KNeighborsClassifier(n_neighbors=5)
-    knn.fit(X_train_sc, y_train)
-    models['KNN'] = (knn, scaler)
-    predictions['KNN'] = knn.predict(X_test_sc)
+    for name, clf in models.items():
+        print(f"   - Entrenando {name}...")
+        clf.fit(X_train, y_train)
+        predictions[name] = clf.predict(X_test)
 
     print(f"   ✓ {len(models)} modelos entrenados")
     return models, predictions
@@ -385,7 +621,7 @@ def train_models(X_train, y_train, X_test, y_test):
 # 10. EVALUAR MODELOS
 # ============================================================================
 def evaluate_models(models, predictions, y_test, class_labels=None):
-    """Evalúa y compara clasificadores"""
+    """Evalúa y compara clasificadores (accuracy + macro-F1)."""
     print("\n" + "="*60)
     print("RESULTADOS DE MODELOS  (Win / Draw / Loss)")
     print("="*60)
@@ -394,14 +630,14 @@ def evaluate_models(models, predictions, y_test, class_labels=None):
 
     for model_name, y_pred in predictions.items():
         acc = accuracy_score(y_test, y_pred)
-        print(f"\n{model_name}  —  Accuracy: {acc:.2%}")
+        f1m = f1_score(y_test, y_pred, average='macro', zero_division=0)
+        print(f"\n{model_name}  —  Accuracy: {acc:.2%}  |  Macro-F1: {f1m:.2%}")
         print(classification_report(y_test, y_pred, target_names=class_labels, zero_division=0))
-        results_rows.append({'Model': model_name, 'Accuracy': round(acc, 4)})
+        results_rows.append({'Model': model_name, 'Accuracy': round(acc, 4), 'Macro_F1': round(f1m, 4)})
 
-    # Ranking final
-    print("\nRANKING:")
-    for r in sorted(results_rows, key=lambda x: x['Accuracy'], reverse=True):
-        print(f"  {r['Model']:<22} {r['Accuracy']:.2%}")
+    print("\nRANKING (por Macro-F1, mejor para clases desbalanceadas):")
+    for r in sorted(results_rows, key=lambda x: x['Macro_F1'], reverse=True):
+        print(f"  {r['Model']:<22}  acc {r['Accuracy']:.2%}   F1 {r['Macro_F1']:.2%}")
 
     print("="*60)
     return pd.DataFrame(results_rows)
@@ -410,39 +646,45 @@ def evaluate_models(models, predictions, y_test, class_labels=None):
 # ============================================================================
 # 10B. CROSS-VALIDATION — accuracy estable con pocos datos
 # ============================================================================
-def cross_validate_models(X, y, n_splits=5, random_state=42):
+def cross_validate_models(X, y, n_splits=3, random_state=42):
     """
     Walk-forward validation: respeta el orden cronológico del dataset.
     Cada fold entrena solo con partidos ANTERIORES a los del test.
-    Esto da el accuracy real que verás al predecir partidos futuros.
+    n_splits=3 → test folds de ~20 partidos (con 81 totales) — menos ruido de muestreo
+    que n_splits=5 (que daba folds de ~13 y varianza inflada artificialmente).
     Requisito: X e y deben venir ordenados por Fecha ascendente.
     """
+    n = len(X)
+    test_size = n // (n_splits + 1)
     print("\n" + "="*60)
-    print(f"VALIDACIÓN TEMPORAL WALK-FORWARD ({n_splits} folds)")
+    print(f"VALIDACIÓN TEMPORAL WALK-FORWARD ({n_splits} folds, ~{test_size} partidos por test)")
     print("="*60)
 
     cv = TimeSeriesSplit(n_splits=n_splits)
-
-    scaler = StandardScaler()
-
-    classifiers = {
-        'Random Forest':      RandomForestClassifier(n_estimators=100, random_state=random_state, n_jobs=-1),
-        'Gradient Boosting':  GradientBoostingClassifier(n_estimators=100, random_state=random_state),
-        'Logistic Regression': Pipeline([('sc', StandardScaler()), ('lr', LogisticRegression(max_iter=1000, random_state=random_state))]),
-        'SVM':                Pipeline([('sc', StandardScaler()), ('svm', SVC(kernel='rbf', C=1, random_state=random_state))]),
-        'XGBoost':            XGBClassifier(n_estimators=100, max_depth=3, learning_rate=0.1, random_state=random_state, eval_metric='mlogloss', verbosity=0),
-        'KNN':                Pipeline([('sc', StandardScaler()), ('knn', KNeighborsClassifier(n_neighbors=5))]),
-    }
+    classifiers = build_classifiers(seed=random_state, n_features=X.shape[1])
 
     rows = []
     for name, clf in classifiers.items():
-        scores = cross_val_score(clf, X, y, cv=cv, scoring='accuracy')
-        rows.append({'Model': name, 'CV Mean': scores.mean(), 'CV Std': scores.std()})
-        print(f"  {name:<22}  {scores.mean():.2%} ± {scores.std():.2%}  (folds: {' '.join(f'{s:.0%}' for s in scores)})")
+        out = cross_validate(
+            clf, X, y, cv=cv,
+            scoring={'acc': 'accuracy', 'f1m': 'f1_macro'},
+            n_jobs=1,
+        )
+        acc_m, acc_s = out['test_acc'].mean(), out['test_acc'].std()
+        f1_m, f1_s   = out['test_f1m'].mean(), out['test_f1m'].std()
+        acc_last = out['test_acc'][-1]   # fold con más historial = mejor proxy del rendimiento futuro
+        f1_last  = out['test_f1m'][-1]
+        rows.append({'Model': name, 'CV Mean': acc_m, 'CV Std': acc_s,
+                     'F1 Mean': f1_m, 'F1 Std': f1_s,
+                     'Acc Last': acc_last, 'F1 Last': f1_last})
+        folds_str = ' '.join(f'{s:.0%}' for s in out['test_acc'])
+        print(f"  {name:<22}  acc {acc_m:.2%}±{acc_s:.2%}  F1 {f1_m:.2%}±{f1_s:.2%}  "
+              f"último fold: {acc_last:.0%}  (folds: {folds_str})")
 
-    print("\nRANKING (por CV Mean):")
-    for r in sorted(rows, key=lambda x: x['CV Mean'], reverse=True):
-        print(f"  {r['Model']:<22}  {r['CV Mean']:.2%} ± {r['CV Std']:.2%}")
+    print("\nRANKING (por Macro-F1 del último fold — entrenó con más historial):")
+    for r in sorted(rows, key=lambda x: x['F1 Last'], reverse=True):
+        print(f"  {r['Model']:<22}  acc {r['Acc Last']:.2%}   F1 {r['F1 Last']:.2%}   "
+              f"(CV medio: {r['F1 Mean']:.2%}±{r['F1 Std']:.2%})")
     print("="*60)
 
     return pd.DataFrame(rows)
@@ -497,18 +739,33 @@ def main(filepath, test_size=0.2, random_state=42):
 
     # 1-7. Carga, limpieza, transformación y enriquecimiento
     df = load_data(filepath)
-    df = select_columns(df)
 
     # Orden cronológico — crítico para que la validación temporal funcione.
-    # Si Fecha no existe o tiene huecos, caemos a Partido_id como proxy.
+    # Hay que hacerlo ANTES de select_columns, que descarta Fecha y Partido_id.
     if 'Fecha' in df.columns:
         df['_fecha_orden'] = pd.to_datetime(df['Fecha'], errors='coerce')
-        df = df.sort_values(by=['_fecha_orden', 'Partido_id'], na_position='last')
+        sort_cols = ['_fecha_orden']
+        if 'Partido_id' in df.columns:
+            sort_cols.append('Partido_id')
+        df = df.sort_values(by=sort_cols, na_position='last')
         df = df.drop(columns=['_fecha_orden']).reset_index(drop=True)
-    else:
+    elif 'Partido_id' in df.columns:
         df = df.sort_values('Partido_id').reset_index(drop=True)
     print(f"   ✓ Dataset ordenado cronológicamente (más antiguo → más reciente)")
 
+    # Sede neutral: las finales se juegan en cancha neutral → Es_Local_E1 = 0
+    if 'Fase' in df.columns and 'Es_Local_E1' in df.columns:
+        mask_final = df['Fase'].astype(str).str.strip().str.lower() == 'final'
+        if mask_final.any():
+            df.loc[mask_final, 'Es_Local_E1'] = 0
+            print(f"   ✓ {int(mask_final.sum())} partido(s) de Final marcados como sede neutral")
+
+    # Features pre-partido (orden crítico: deben ir después del sort cronológico)
+    df, team_elos = compute_elo_features(df)
+    df, team_historial = compute_form_features(df)
+    df, h2h_log = compute_h2h_features(df)
+
+    df = select_columns(df)
     df = handle_missing_values(df, strategy='mean')
     df = create_derived_variables(df)
     df = filter_rows(df)
@@ -588,6 +845,25 @@ def main(filepath, test_size=0.2, random_state=42):
     print("✨ PIPELINE COMPLETADO")
     print("="*60 + "\n")
 
+    # Feature importance del mejor modelo basado en RF (más interpretable que XGB)
+    feature_importance = []
+    try:
+        rf_pipeline = models.get('Random Forest')
+        if rf_pipeline is not None:
+            sk_step = rf_pipeline.named_steps.get('sk')
+            rf_step = rf_pipeline.named_steps.get('rf')
+            if sk_step is not None and rf_step is not None:
+                mask = sk_step.get_support()
+                selected_features = [c for c, keep in zip(X.columns, mask) if keep]
+                importances = rf_step.feature_importances_
+                feature_importance = sorted(
+                    [{'feature': f, 'importance': float(imp)}
+                     for f, imp in zip(selected_features, importances)],
+                    key=lambda x: -x['importance'],
+                )
+    except Exception as e:
+        print(f"   ⚠️  No se pudo calcular feature importance: {e}")
+
     return {
         'df': df,
         'df_model': df_model,
@@ -598,13 +874,17 @@ def main(filepath, test_size=0.2, random_state=42):
         'results': results_df,
         'predictions': predictions_df,
         'cv_results': cv_results,
+        'team_elos': team_elos,
+        'team_historial': team_historial,
+        'h2h_log': h2h_log,
+        'feature_importance': feature_importance,
     }
 
 
 # ============================================================================
 # PREDICCIÓN DE PARTIDO FUTURO  (ensemble de n_runs corridas)
 # ============================================================================
-def predecir_partido(equipo1, equipo2, results, n_runs=20):
+def predecir_partido(equipo1, equipo2, results, n_runs=20, fase='Liga'):
     """
     Predice el resultado entrenando cada modelo n_runs veces con distintas
     semillas sobre el dataset completo y promediando las probabilidades.
@@ -648,9 +928,50 @@ def predecir_partido(equipo1, equipo2, results, n_runs=20):
         stats_e2 = global_e2
 
     # --- Construir fila de features ---
-    row = {'Es_Local_E1': 1}
+    # Final = sede neutral → Es_Local_E1 = 0; resto de fases = local real (Equipo1)
+    es_final = str(fase).strip().lower() == 'final'
+    if es_final:
+        print(f"⚖️  Fase: Final → sede neutral (Es_Local_E1 = 0)")
+    row = {'Es_Local_E1': 0 if es_final else 1}
+
+    # ELO actual de cada equipo (post-último partido jugado)
+    team_elos = results.get('team_elos', {})
+    elo_e1 = team_elos.get(equipo1, ELO_BASE)
+    elo_e2 = team_elos.get(equipo2, ELO_BASE)
+    print(f"   ELO actual: {equipo1} {int(elo_e1)}  vs  {equipo2} {int(elo_e2)}  (Δ {int(elo_e1-elo_e2):+d})")
+
+    # Forma reciente y H2H usando los historiales acumulados durante main()
+    historial = results.get('team_historial', {})
+    h2h_log = results.get('h2h_log', {})
+    forma_e1 = resumen_forma(historial.get(equipo1, []))
+    forma_e2 = resumen_forma(historial.get(equipo2, []))
+    h2h = resumen_h2h(h2h_log, equipo1, equipo2)
+    print(f"   Forma últ.{FORMA_WINDOW}: {equipo1} {forma_e1['w']}W-{forma_e1['d']}D-{forma_e1['l']}L  ·  {equipo2} {forma_e2['w']}W-{forma_e2['d']}D-{forma_e2['l']}L")
+    if h2h['n'] > 0:
+        print(f"   H2H últ.{h2h['n']}: {equipo1} {h2h['w']}-{h2h['d']}-{h2h['l']}  (GF {h2h['gf']}, GC {h2h['gc']})")
+
+    forma_features = {
+        'Forma_W_E1': forma_e1['w'], 'Forma_D_E1': forma_e1['d'], 'Forma_L_E1': forma_e1['l'],
+        'Forma_GF_E1': forma_e1['gf'], 'Forma_GC_E1': forma_e1['gc'], 'Forma_Pts_E1': forma_e1['pts'],
+        'Forma_W_E2': forma_e2['w'], 'Forma_D_E2': forma_e2['d'], 'Forma_L_E2': forma_e2['l'],
+        'Forma_GF_E2': forma_e2['gf'], 'Forma_GC_E2': forma_e2['gc'], 'Forma_Pts_E2': forma_e2['pts'],
+        'Diff_Forma_Pts': forma_e1['pts'] - forma_e2['pts'],
+        'Diff_Forma_GD':  (forma_e1['gf'] - forma_e1['gc']) - (forma_e2['gf'] - forma_e2['gc']),
+        'Dias_Descanso_E1': 7, 'Dias_Descanso_E2': 7,  # default razonable para partidos futuros
+        'H2H_W_E1': h2h['w'], 'H2H_D': h2h['d'], 'H2H_L_E1': h2h['l'],
+        'H2H_GF_E1': h2h['gf'], 'H2H_GC_E1': h2h['gc'], 'H2H_N': h2h['n'],
+    }
+
     for col in feat_cols:
-        if col in stats_e1.index:
+        if col == 'ELO_E1':
+            row[col] = elo_e1
+        elif col == 'ELO_E2':
+            row[col] = elo_e2
+        elif col == 'Diff_ELO':
+            row[col] = elo_e1 - elo_e2
+        elif col in forma_features:
+            row[col] = forma_features[col]
+        elif col in stats_e1.index:
             row[col] = stats_e1[col]
         elif col in stats_e2.index:
             row[col] = stats_e2[col]
@@ -679,23 +1000,19 @@ def predecir_partido(equipo1, equipo2, results, n_runs=20):
     le_res  = le_dict['Resultado_E1']
     classes = list(le_res.classes_)   # ['Draw', 'Loss', 'Win']
 
+    n_feat = len(feat_cols)
     def make_clfs(seed):
-        return {
-            'Random Forest':       RandomForestClassifier(n_estimators=100, random_state=seed, n_jobs=-1),
-            'Gradient Boosting':   GradientBoostingClassifier(n_estimators=100, random_state=seed),
-            'Logistic Regression': Pipeline([('sc', StandardScaler()), ('lr', LogisticRegression(max_iter=1000, random_state=seed))]),
-            'SVM':                 Pipeline([('sc', StandardScaler()), ('svm', SVC(kernel='rbf', C=1, probability=True, random_state=seed))]),
-            'XGBoost':             XGBClassifier(n_estimators=100, max_depth=3, learning_rate=0.1,
-                                                 random_state=seed, eval_metric='mlogloss', verbosity=0),
-            'KNN':                 Pipeline([('sc', StandardScaler()), ('knn', KNeighborsClassifier(n_neighbors=5))]),
-        }
+        return build_classifiers(seed=seed, n_features=n_feat)
 
-    # Ordenar modelos por CV Mean (mejor primero)
+    # Ordenar modelos por F1 del último fold (entrenó con más historial → mejor proxy)
     model_names = list(make_clfs(0).keys())
     cv_df = results.get('cv_results')
     if cv_df is not None:
-        cv_order = cv_df.set_index('Model')['CV Mean'].to_dict()
-        model_names = sorted(model_names, key=lambda n: cv_order.get(n, 0), reverse=True)
+        for col in ('F1 Last', 'F1 Mean', 'CV Mean'):
+            if col in cv_df.columns:
+                cv_order = cv_df.set_index('Model')[col].to_dict()
+                model_names = sorted(model_names, key=lambda n: cv_order.get(n, 0), reverse=True)
+                break
 
     probas_acum = {name: [] for name in model_names}
 
@@ -718,22 +1035,24 @@ def predecir_partido(equipo1, equipo2, results, n_runs=20):
 
     print(f"\n  {'Modelo':<22}  Pred     Win    Draw    Loss")
     print(f"  {'-'*55}")
+    modelos_out = []
     for name in model_names:
         avg  = np.mean(probas_acum[name], axis=0)
         pred = classes[np.argmax(avg)]
-        w = avg[win_idx]  if win_idx  is not None else 0
-        d = avg[draw_idx] if draw_idx is not None else 0
-        l = avg[loss_idx] if loss_idx is not None else 0
+        w = float(avg[win_idx])  if win_idx  is not None else 0.0
+        d = float(avg[draw_idx]) if draw_idx is not None else 0.0
+        l = float(avg[loss_idx]) if loss_idx is not None else 0.0
         print(f"  {name:<22} → {pred:<6}  {w:>5.1%}  {d:>5.1%}  {l:>5.1%}")
+        modelos_out.append({'modelo': name, 'pred': pred, 'win': w, 'draw': d, 'loss': l})
 
     # --- Promedio global entre todos los modelos ---
     todas = np.mean([np.mean(probas_acum[n], axis=0) for n in model_names], axis=0)
     pred_global = classes[np.argmax(todas)]
-    w = todas[win_idx]  if win_idx  is not None else 0
-    d = todas[draw_idx] if draw_idx is not None else 0
-    l = todas[loss_idx] if loss_idx is not None else 0
+    w_c = float(todas[win_idx])  if win_idx  is not None else 0.0
+    d_c = float(todas[draw_idx]) if draw_idx is not None else 0.0
+    l_c = float(todas[loss_idx]) if loss_idx is not None else 0.0
     print(f"  {'-'*55}")
-    print(f"  {'CONSENSO':<22} → {pred_global:<6}  {w:>5.1%}  {d:>5.1%}  {l:>5.1%}")
+    print(f"  {'CONSENSO':<22} → {pred_global:<6}  {w_c:>5.1%}  {d_c:>5.1%}  {l_c:>5.1%}")
 
     # --- Regresores de goles (ensemble) ---
     def make_regs(seed):
@@ -748,6 +1067,7 @@ def predecir_partido(equipo1, equipo2, results, n_runs=20):
 
     print(f"\n  {'Modelo':<16}  Marcador predicho")
     print(f"  {'-'*42}")
+    goles_out = []
     for reg_name in make_regs(0).keys():
         g1_preds, g2_preds = [], []
         for seed in range(n_runs):
@@ -756,15 +1076,37 @@ def predecir_partido(equipo1, equipo2, results, n_runs=20):
             r2.fit(X_full, y2_full)
             g1_preds.append(r1.predict(X_pred)[0])
             g2_preds.append(r2.predict(X_pred)[0])
-        g1 = max(0, round(np.mean(g1_preds)))
-        g2 = max(0, round(np.mean(g2_preds)))
-        print(f"  {reg_name:<16}  {equipo1} {g1} – {g2} {equipo2}  (±{np.std(g1_preds):.1f} / ±{np.std(g2_preds):.1f})")
+        g1 = int(max(0, round(np.mean(g1_preds))))
+        g2 = int(max(0, round(np.mean(g2_preds))))
+        s1, s2 = float(np.std(g1_preds)), float(np.std(g2_preds))
+        print(f"  {reg_name:<16}  {equipo1} {g1} – {g2} {equipo2}  (±{s1:.1f} / ±{s2:.1f})")
+        goles_out.append({'modelo': reg_name, 'g1': g1, 'g2': g2, 'std1': s1, 'std2': s2})
 
     print()
     equipos_conocidos = sorted(set(df['Equipo1'].tolist() + df['Equipo2'].tolist()))
+    desconocidos = []
     for e in [equipo1, equipo2]:
         if e not in equipos_conocidos:
             print(f"  ⚠️  '{e}' no está en el historial — se usaron promedios globales")
+            desconocidos.append(e)
+
+    return {
+        'equipo1': equipo1,
+        'equipo2': equipo2,
+        'fase': fase,
+        'es_final': es_final,
+        'n_runs': n_runs,
+        'elo_e1': float(elo_e1),
+        'elo_e2': float(elo_e2),
+        'diff_elo': float(elo_e1 - elo_e2),
+        'forma_e1': forma_e1,
+        'forma_e2': forma_e2,
+        'h2h': h2h,
+        'modelos': modelos_out,
+        'consenso': {'pred': pred_global, 'win': w_c, 'draw': d_c, 'loss': l_c},
+        'goles': goles_out,
+        'equipos_desconocidos': desconocidos,
+    }
 
 
 # ============================================================================
@@ -784,9 +1126,9 @@ if __name__ == "__main__":
         print("   " + " | ".join(equipos))
 
         # ── Predicciones de partidos futuros ─────────────────────────────
-        predecir_partido("Copengagen",  "Kairat Almaty",       results)
-        predecir_partido("Atleti",    "Union SG", results)
-        predecir_partido("Juventus",    "Sporting CP",          results)
+        predecir_partido("Kairat Almaty",  "Olympiacos",       results)
+        predecir_partido("Inter",    "Liverpool", results)
+        predecir_partido("Monaco",    "Galatasaray",          results)
 
     except FileNotFoundError:
         print(f"❌ No se encontró el archivo: {FILEPATH}")
@@ -794,3 +1136,22 @@ if __name__ == "__main__":
         print(f"❌ Error: {e}")
         import traceback
         traceback.print_exc()
+
+
+"""El comando es:
+
+  python agregar_partido.py --fecha YYYY-MM-DD --fase Liga --si
+
+  Ejemplos para las jornadas que vienen:
+
+  # Jornada 5 UCL 2025-26 (25-26 nov)  python agregar_partido.py --fecha 2025-11-25 --fase Liga --si
+  python agregar_partido.py --fecha 2025-11-26 --fase Liga --si
+
+  Flags útiles:
+  - --si → auto-confirma cada partido (sin esto te pregunta uno por uno)
+  - --no-headless → muestra el navegador (para depurar si algo falla)
+  - --debug → guarda debug_uefa.png y .txt por cada scrape
+  - --fase → omítelo y te lo pregunta (default Liga)
+
+  Recuerda que modo_fecha lanza un subprocess por partido para evitar que Chromium se cuelgue, así que tarda un rato — cada partido toma
+  ~15-30s."""

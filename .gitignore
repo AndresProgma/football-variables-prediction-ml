@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Base de datos local (cada deploy/dev arranca su propia DB)
+*.db
+*.db-journal
+
+# CSVs generados por el pipeline (se regeneran al correr el script)
+model_results.csv
+predictions.csv
+processed_data.csv
+
+# Configuración local de Claude Code
+.claude/settings.local.json
+
+# Variables de entorno con secretos
+.env
+.env.local
+
+# Debug del scraper
+debug_uefa*.png
+debug_uefa*.txt
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/
+*.swp
