@@ -159,6 +159,20 @@ async function cargarRanking() {
 // ---------------------------------------------------------------------------
 // Track record (test vs real)
 // ---------------------------------------------------------------------------
+const MODELOS_TRACK = [
+  { key: 'Random Forest',       short: 'RF',  id: 'th-rf'  },
+  { key: 'Gradient Boosting',   short: 'GB',  id: 'th-gb'  },
+  { key: 'Logistic Regression', short: 'LR',  id: 'th-lr'  },
+  { key: 'SVM',                 short: 'SVM', id: 'th-svm' },
+  { key: 'XGBoost',             short: 'XGB', id: 'th-xgb' },
+  { key: 'KNN',                 short: 'KNN', id: 'th-knn' },
+];
+
+const colorByAcc = (acc) =>
+  acc >= 0.6  ? 'text-emerald-400'
+  : acc >= 0.5 ? 'text-amber-400'
+  :              'text-rose-400';
+
 async function cargarTrackRecord() {
   const data = await api.prediccionesTest(state.evaluacionId);
   const tbody = $('tbl-track');
@@ -180,6 +194,17 @@ async function cargarTrackRecord() {
       ${cell(r.Resultado_Real, r['KNN'])}
     </tr>
   `).join('');
+
+  const total = data.predicciones.length;
+  for (const m of MODELOS_TRACK) {
+    const th = $(m.id);
+    if (!th) continue;
+    if (!total) { th.textContent = m.short; continue; }
+    const aciertos = data.predicciones.filter(p => p[m.key] === p.Resultado_Real).length;
+    const acc = aciertos / total;
+    const pct = Math.round(acc * 100);
+    th.innerHTML = `${m.short} <span class="${colorByAcc(acc)} font-mono ml-1">${pct}%</span>`;
+  }
 }
 
 // ---------------------------------------------------------------------------
