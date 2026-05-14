@@ -356,18 +356,29 @@ def _parsear_fecha_es(texto):
     return f'{año}-{mes:02d}-{dia:02d}'
 
 
+def _season_de_fecha(fecha):
+    """UCL season = año del primer partido del torneo (agosto). Sep-Dic año X
+    y Ene-May año X+1 pertenecen a la temporada X."""
+    y, m, _ = (int(x) for x in fecha.split('-'))
+    return y if m >= 7 else y - 1
+
+
 def listar_partidos_por_fecha(fecha, headless=True):
     """
     Devuelve solo las URLs de los partidos jugados en la fecha YYYY-MM-DD.
     Lee los H2 de fecha en español (ej. 'martes 4 noviembre 2025') y asocia
     cada anchor de partido al H2 anterior más cercano en el DOM.
+
+    Para fechas pasadas se pasa ?season=YYYY a la URL (necesario para que
+    UEFA cargue el calendario de esa temporada).
     """
     try:
         datetime.strptime(fecha, '%Y-%m-%d')
     except ValueError:
         raise ValueError(f"Fecha inválida: {fecha!r}. Debe ser YYYY-MM-DD.")
 
-    url = f'https://es.uefa.com/uefachampionsleague/fixtures-results/#/d/{fecha}'
+    season = _season_de_fecha(fecha)
+    url = f'https://es.uefa.com/uefachampionsleague/fixtures-results/?season={season}#/d/{fecha}'
 
     with sync_playwright() as p:
         browser, context = _crear_contexto(p, headless)

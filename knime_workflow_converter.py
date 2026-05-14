@@ -33,44 +33,70 @@ from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.metrics import accuracy_score, classification_report, mean_absolute_error, f1_score
 from sklearn.model_selection import StratifiedKFold, TimeSeriesSplit, cross_val_score, cross_validate
 from sklearn.pipeline import Pipeline
+from sklearn.calibration import CalibratedClassifierCV
 from xgboost import XGBClassifier, XGBRegressor
 
-K_FEATURES = 25  # top features según ANOVA-F dentro de cada fold (evita curse of dimensionality)
+K_FEATURES = 20  # top features según ANOVA-F dentro de cada fold (evita curse of dimensionality)
+
+# Configuración v14 (mejor ensemble en walk-forward CV con 189 partidos):
+#   - features extra (xG sintético + UEFA coef) ya integrados en compute_*
+#   - clase Draw recibe peso 1.5× → modelos pueden predecir empates sin colapsar
+#   - todos los clasificadores envueltos en CalibratedClassifierCV (isotónica, cv=3)
+#     → probabilidades calibradas: P(Win)=70% ≈ frecuencia real de aciertos 70%
+#   - K=20 features (de ~160) → óptimo en CV walk-forward, evita curse-of-dim
+CALIBRAR_DEFECTO = True
+DRAW_WEIGHT_BOOST = 1.5   # peso de la clase Draw
 
 
-def build_classifiers(seed=42, n_features=None):
-    """Pipelines con SelectKBest + clasificador balanceado.
-    SelectKBest se ajusta dentro del pipeline → no hay leakage en CV.
-    class_weight='balanced' compensa la subrepresentación de Draw.
+def _class_weight():
+    """Pesos de clase para LabelEncoder (0=Draw, 1=Loss, 2=Win — orden alfabético)."""
+    return {0: DRAW_WEIGHT_BOOST, 1: 1.0, 2: 1.0}
+
+
+def _wrap_calibrado(pipe, calibrar=None):
+    if calibrar is None:
+        calibrar = CALIBRAR_DEFECTO
+    if calibrar:
+        return CalibratedClassifierCV(pipe, method='isotonic', cv=3)
+    return pipe
+
+
+def build_classifiers(seed=42, n_features=None, calibrar=None):
+    """Pipelines con SelectKBest + clasificador + (opcional) calibración isotónica.
+
+    Cambios v4 vs v0:
+      - class_weight={0:2, 1:1, 2:1}  (Draw boost para no colapsar empates)
+      - CalibratedClassifierCV(isotónica, cv=3) envuelve cada clasificador
     """
     k = min(K_FEATURES, n_features) if n_features else K_FEATURES
     sk = lambda: SelectKBest(f_classif, k=k)
+    cw = _class_weight()
     return {
-        'Random Forest':       Pipeline([('sk', sk()),
+        'Random Forest':       _wrap_calibrado(Pipeline([('sk', sk()),
                                          ('rf', RandomForestClassifier(
                                              n_estimators=200, max_depth=5, min_samples_leaf=3,
-                                             class_weight='balanced',
-                                             random_state=seed, n_jobs=-1))]),
-        'Gradient Boosting':   Pipeline([('sk', sk()),
+                                             class_weight=cw,
+                                             random_state=seed, n_jobs=-1))]), calibrar),
+        'Gradient Boosting':   _wrap_calibrado(Pipeline([('sk', sk()),
                                          ('gb', GradientBoostingClassifier(
                                              n_estimators=100, max_depth=3, min_samples_leaf=3,
-                                             random_state=seed))]),
-        'Logistic Regression': Pipeline([('sc', StandardScaler()), ('sk', sk()),
+                                             random_state=seed))]), calibrar),
+        'Logistic Regression': _wrap_calibrado(Pipeline([('sc', StandardScaler()), ('sk', sk()),
                                          ('lr', LogisticRegression(
-                                             max_iter=2000, C=0.3, class_weight='balanced',
-                                             random_state=seed))]),
-        'SVM':                 Pipeline([('sc', StandardScaler()), ('sk', sk()),
+                                             max_iter=2000, C=0.3, class_weight=cw,
+                                             random_state=seed))]), calibrar),
+        'SVM':                 _wrap_calibrado(Pipeline([('sc', StandardScaler()), ('sk', sk()),
                                          ('svm', SVC(
-                                             kernel='rbf', C=0.5, class_weight='balanced',
-                                             probability=True, random_state=seed))]),
-        'XGBoost':             Pipeline([('sk', sk()),
+                                             kernel='rbf', C=0.5, class_weight=cw,
+                                             probability=True, random_state=seed))]), calibrar),
+        'XGBoost':             _wrap_calibrado(Pipeline([('sk', sk()),
                                          ('xgb', XGBClassifier(
                                              n_estimators=100, max_depth=3, learning_rate=0.1,
                                              reg_lambda=1.0, random_state=seed,
-                                             eval_metric='mlogloss', verbosity=0))]),
-        'KNN':                 Pipeline([('sc', StandardScaler()), ('sk', sk()),
+                                             eval_metric='mlogloss', verbosity=0))]), calibrar),
+        'KNN':                 _wrap_calibrado(Pipeline([('sc', StandardScaler()), ('sk', sk()),
                                          ('knn', KNeighborsClassifier(
-                                             n_neighbors=5, weights='distance'))]),
+                                             n_neighbors=5, weights='distance'))]), calibrar),
     }
 
 
@@ -132,6 +158,128 @@ def compute_elo_features(df):
     print(f"   Bot 5: " + ' · '.join(f'{t} {int(e)}' for t, e in bot5))
 
     return df, elos
+
+
+# ============================================================================
+# Coeficiente UEFA aproximado por club (5-year, ~temporada 2024-25)
+# ============================================================================
+
+UEFA_COEF = {
+    'Real Madrid': 144.0, 'Man City': 145.0, 'Bayern Munchen': 138.0,
+    'Liverpool': 132.0, 'Paris': 122.5, 'Inter': 119.5,
+    'BDortmund': 109.0, 'Leverkursen': 107.0, 'Atleti': 107.0,
+    'Juventus': 100.5, 'Napoli': 100.0, 'Barcelona': 99.5,
+    'Arsenal': 98.0, 'Benfica': 94.0, 'Atlanta': 90.0,
+    'Chelsea': 88.0, 'Milan': 88.0, 'Sporting CP': 84.0,
+    'Tottenham': 81.0, 'PSV': 71.0, 'Villareal': 70.0,
+    'Marseille': 65.0, 'Ajax': 64.0, 'Athletic Club': 53.0,
+    'Frankfurt': 52.0, 'Slavia Praha': 51.5, 'Club Brugge': 51.5,
+    'Galatasaray': 51.0, 'Newcastle': 50.0, 'Olympiacos': 47.5,
+    'Bodo': 49.0, 'Copengagen': 49.0, 'Qarabag': 41.0,
+    'Union SG': 41.0, 'Monaco': 30.0, 'Pafos': 12.0,
+    'Kairat Almaty': 8.0,
+    # 2024-25 únicos (no en 2025-26)
+    'Leipzig': 87.0, 'Stuttgart': 50.0, 'Sturm Graz': 35.0,
+    'Salzburg': 55.0, 'Brest': 25.0, 'Bologna': 35.0,
+    'Aston Villa': 50.0, 'Lille': 60.0, 'Crvena Zvezda': 40.0,
+    'YB': 35.0, 'Celtic': 50.0, 'Feyenoord': 75.0,
+    'Dinamo Zagreb': 50.0, 'Sparta': 40.0, 'Girona': 30.0,
+    'Slovan Bratislava': 20.0, 'Shakhtar': 70.0,
+    # 2023-24 grupos
+    'Sevilla': 92.0, 'Lazio': 70.0, 'Lens': 25.0,
+    'Antwerp': 25.0, 'Galatasaray SK': 51.0, 'Manchester United': 95.0,
+    'Man United': 95.0, 'RBL': 87.0, 'Young Boys': 35.0,
+    'Braga': 65.0, 'Real Sociedad': 65.0, 'Union Berlin': 45.0,
+    'Berlin': 45.0, 'Royal Antwerp': 25.0, 'Real Madrid CF': 144.0,
+    'Real Betis': 50.0,
+}
+
+UEFA_COEF_DEFAULT = 25.0   # equipo desconocido → underdog plausible
+
+
+def compute_uefa_coef_features(df):
+    """Anexa Coef_UEFA_E1, Coef_UEFA_E2 y Diff_Coef_UEFA.
+
+    Es una señal estática del 'nivel histórico europeo' del club. Útil
+    sobre todo para cold-start (Pafos, Kairat, Qarabag) donde el ELO está
+    en su default de 1500 al no tener historia en el dataset."""
+    print("🏆 Calculando coeficiente UEFA por club...")
+    df = df.copy()
+    df['Coef_UEFA_E1']  = df['Equipo1'].map(UEFA_COEF).fillna(UEFA_COEF_DEFAULT)
+    df['Coef_UEFA_E2']  = df['Equipo2'].map(UEFA_COEF).fillna(UEFA_COEF_DEFAULT)
+    df['Diff_Coef_UEFA'] = df['Coef_UEFA_E1'] - df['Coef_UEFA_E2']
+
+    desconocidos = set(df.loc[~df['Equipo1'].isin(UEFA_COEF), 'Equipo1']) | \
+                   set(df.loc[~df['Equipo2'].isin(UEFA_COEF), 'Equipo2'])
+    if desconocidos:
+        print(f"   ⚠️  {len(desconocidos)} equipos sin coeficiente UEFA, usando default {UEFA_COEF_DEFAULT}: {sorted(desconocidos)[:10]}")
+    return df
+
+
+# ============================================================================
+# xG sintético pre-partido (promedio histórico del equipo en partidos previos)
+# ============================================================================
+
+# Pesos calibrados aproximadamente para que xG promedio ≈ goles promedio
+XG_W_SHOTS = 0.05   # disparos totales
+XG_W_SOT   = 0.20   # disparos a puerta
+XG_W_CC    = 0.55   # oportunidades claras
+XG_WINDOW  = 5      # promedio de últimos N partidos (más receptivo a forma actual)
+
+
+def _xg_partido(shots, sot, clear):
+    """xG estimado desde stats del propio partido."""
+    return (XG_W_SHOTS * (shots or 0)
+            + XG_W_SOT * (sot or 0)
+            + XG_W_CC  * (clear or 0))
+
+
+def compute_xg_features(df):
+    """xG / xGA sintético pre-partido: promedio rolling de los últimos
+    XG_WINDOW partidos del equipo (como E1 o E2). Sin leakage.
+
+    Anexa: xG_E1_rolling, xGA_E1_rolling, xG_E2_rolling, xGA_E2_rolling,
+            Diff_xG_rolling. Si el equipo no tiene historial → NaN
+            (handle_missing_values lo imputará luego con la media)."""
+    print("🎯 Calculando xG sintético pre-partido...")
+    df = df.copy()
+    historial = {}   # equipo → list of {xg, xga}
+
+    xg1, xga1, xg2, xga2 = [], [], [], []
+
+    for _, row in df.iterrows():
+        e1, e2 = row['Equipo1'], row['Equipo2']
+
+        # Rolling xG/xGA del equipo desde su historial previo
+        h1 = (historial.get(e1) or [])[-XG_WINDOW:]
+        h2 = (historial.get(e2) or [])[-XG_WINDOW:]
+        xg1.append(np.mean([h['xg']  for h in h1]) if h1 else np.nan)
+        xga1.append(np.mean([h['xga'] for h in h1]) if h1 else np.nan)
+        xg2.append(np.mean([h['xg']  for h in h2]) if h2 else np.nan)
+        xga2.append(np.mean([h['xga'] for h in h2]) if h2 else np.nan)
+
+        # Calcular xG de ESTE partido y agregar al historial (sin leakage:
+        # las features rolling ya fueron asignadas antes, esto es para los
+        # partidos futuros).
+        m_xg1 = _xg_partido(row.get('Disparos_totales_E1'),
+                            row.get('Disparos_a_puerta_E1'),
+                            row.get('Oportunidades_claras_E1'))
+        m_xg2 = _xg_partido(row.get('Disparos_totales_E2'),
+                            row.get('Disparos_a_puerta_E2'),
+                            row.get('Oportunidades_claras_E2'))
+        if not pd.isna(m_xg1):
+            historial.setdefault(e1, []).append({'xg': m_xg1, 'xga': m_xg2})
+        if not pd.isna(m_xg2):
+            historial.setdefault(e2, []).append({'xg': m_xg2, 'xga': m_xg1})
+
+    df['xG_E1_rolling']  = xg1
+    df['xGA_E1_rolling'] = xga1
+    df['xG_E2_rolling']  = xg2
+    df['xGA_E2_rolling'] = xga2
+    df['Diff_xG_rolling'] = df['xG_E1_rolling'].fillna(0) - df['xG_E2_rolling'].fillna(0)
+
+    print(f"   ✓ xG rolling calculado (ventana={XG_WINDOW}) para {len(historial)} equipos")
+    return df, historial
 
 
 # ============================================================================
@@ -321,6 +469,8 @@ def select_columns(df):
     
     columns_to_keep = [
         'Equipo1', 'Equipo2', 'Es_Local_E1', 'EQUIPO1_GOLES', 'EQUIPO2_GOLES',
+        # Coeficiente UEFA estático (compute_uefa_coef_features)
+        'Coef_UEFA_E1', 'Coef_UEFA_E2', 'Diff_Coef_UEFA',
         # ELO pre-partido (calculado en compute_elo_features)
         'ELO_E1', 'ELO_E2', 'Diff_ELO',
         # Forma últimos 5 partidos (calculado en compute_form_features)
@@ -330,6 +480,8 @@ def select_columns(df):
         'Dias_Descanso_E1', 'Dias_Descanso_E2',
         # Head-to-head últimos 3 enfrentamientos (compute_h2h_features)
         'H2H_W_E1', 'H2H_D', 'H2H_L_E1', 'H2H_GF_E1', 'H2H_GC_E1', 'H2H_N',
+        # xG sintético rolling (compute_xg_features)
+        'xG_E1_rolling', 'xGA_E1_rolling', 'xG_E2_rolling', 'xGA_E2_rolling', 'Diff_xG_rolling',
         # Goles detallados
         'Goles_dentro_area_E1', 'Goles_Fuera_Area_E1',
         'Goles_dentro_area_E2', 'Goles_Fuera_Area_E2',
@@ -761,9 +913,11 @@ def main(filepath, test_size=0.2, random_state=42):
             print(f"   ✓ {int(mask_final.sum())} partido(s) de Final marcados como sede neutral")
 
     # Features pre-partido (orden crítico: deben ir después del sort cronológico)
+    df = compute_uefa_coef_features(df)
     df, team_elos = compute_elo_features(df)
     df, team_historial = compute_form_features(df)
     df, h2h_log = compute_h2h_features(df)
+    df, xg_historial = compute_xg_features(df)
 
     df = select_columns(df)
     df = handle_missing_values(df, strategy='mean')
@@ -877,6 +1031,7 @@ def main(filepath, test_size=0.2, random_state=42):
         'team_elos': team_elos,
         'team_historial': team_historial,
         'h2h_log': h2h_log,
+        'xg_historial': xg_historial,
         'feature_importance': feature_importance,
     }
 
@@ -950,6 +1105,22 @@ def predecir_partido(equipo1, equipo2, results, n_runs=20, fase='Liga'):
     if h2h['n'] > 0:
         print(f"   H2H últ.{h2h['n']}: {equipo1} {h2h['w']}-{h2h['d']}-{h2h['l']}  (GF {h2h['gf']}, GC {h2h['gc']})")
 
+    # xG sintético rolling (últimos XG_WINDOW partidos)
+    xg_historial = results.get('xg_historial', {})
+    h_xg_e1 = (xg_historial.get(equipo1) or [])[-XG_WINDOW:]
+    h_xg_e2 = (xg_historial.get(equipo2) or [])[-XG_WINDOW:]
+    xg_e1_roll  = float(np.mean([h['xg']  for h in h_xg_e1])) if h_xg_e1 else float(df_model.get('xG_E1_rolling', pd.Series([np.nan])).mean())
+    xga_e1_roll = float(np.mean([h['xga'] for h in h_xg_e1])) if h_xg_e1 else float(df_model.get('xGA_E1_rolling', pd.Series([np.nan])).mean())
+    xg_e2_roll  = float(np.mean([h['xg']  for h in h_xg_e2])) if h_xg_e2 else float(df_model.get('xG_E2_rolling', pd.Series([np.nan])).mean())
+    xga_e2_roll = float(np.mean([h['xga'] for h in h_xg_e2])) if h_xg_e2 else float(df_model.get('xGA_E2_rolling', pd.Series([np.nan])).mean())
+    if h_xg_e1 or h_xg_e2:
+        print(f"   xG últ.{XG_WINDOW}: {equipo1} {xg_e1_roll:.2f} (xGA {xga_e1_roll:.2f})  ·  {equipo2} {xg_e2_roll:.2f} (xGA {xga_e2_roll:.2f})")
+
+    # Coeficiente UEFA
+    coef_e1 = UEFA_COEF.get(equipo1, UEFA_COEF_DEFAULT)
+    coef_e2 = UEFA_COEF.get(equipo2, UEFA_COEF_DEFAULT)
+    print(f"   Coef UEFA: {equipo1} {coef_e1:.1f}  ·  {equipo2} {coef_e2:.1f}  (Δ {coef_e1 - coef_e2:+.1f})")
+
     forma_features = {
         'Forma_W_E1': forma_e1['w'], 'Forma_D_E1': forma_e1['d'], 'Forma_L_E1': forma_e1['l'],
         'Forma_GF_E1': forma_e1['gf'], 'Forma_GC_E1': forma_e1['gc'], 'Forma_Pts_E1': forma_e1['pts'],
@@ -960,6 +1131,11 @@ def predecir_partido(equipo1, equipo2, results, n_runs=20, fase='Liga'):
         'Dias_Descanso_E1': 7, 'Dias_Descanso_E2': 7,  # default razonable para partidos futuros
         'H2H_W_E1': h2h['w'], 'H2H_D': h2h['d'], 'H2H_L_E1': h2h['l'],
         'H2H_GF_E1': h2h['gf'], 'H2H_GC_E1': h2h['gc'], 'H2H_N': h2h['n'],
+        'xG_E1_rolling': xg_e1_roll, 'xGA_E1_rolling': xga_e1_roll,
+        'xG_E2_rolling': xg_e2_roll, 'xGA_E2_rolling': xga_e2_roll,
+        'Diff_xG_rolling': xg_e1_roll - xg_e2_roll,
+        'Coef_UEFA_E1': coef_e1, 'Coef_UEFA_E2': coef_e2,
+        'Diff_Coef_UEFA': coef_e1 - coef_e2,
     }
 
     for col in feat_cols:

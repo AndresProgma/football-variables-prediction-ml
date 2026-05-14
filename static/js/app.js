@@ -460,6 +460,21 @@ $('btn-guardar-track').addEventListener('click', async () => {
 // ---------------------------------------------------------------------------
 // Botón reentrenar
 // ---------------------------------------------------------------------------
+$('btn-sync').addEventListener('click', async () => {
+  try {
+    setLoading(true, 'Sincronizando dataset desde Excel...');
+    const res = await fetch(`${API_BASE}/api/sync`, { method: 'POST' });
+    const data = await res.json();
+    await cargarPartidos();
+    renderKpis();
+    alert(`Sync completo: ${data.nuevos_agregados} partidos nuevos. Total: ${data.total_partidos}`);
+  } catch (err) {
+    alert(`Error al sincronizar: ${err.message}`);
+  } finally {
+    setLoading(false);
+  }
+});
+
 $('btn-evaluar').addEventListener('click', async () => {
   if (!confirm('Reentrenar el modelo desde cero? (1-2 min)')) return;
   try {

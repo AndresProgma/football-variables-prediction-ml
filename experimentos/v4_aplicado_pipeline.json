@@ -1,0 +1,91 @@
+{
+  "n_partidos": 131,
+  "cv": [
+    {
+      "Model": "Random Forest",
+      "CV Mean": 0.5729166666666666,
+      "CV Std": 0.08960755486502736,
+      "F1 Mean": 0.4773981773981774,
+      "F1 Std": 0.1037716379848075,
+      "Acc Last": 0.5625,
+      "F1 Last": 0.4166666666666667
+    },
+    {
+      "Model": "Gradient Boosting",
+      "CV Mean": 0.6354166666666666,
+      "CV Std": 0.10311973892303819,
+      "F1 Mean": 0.5606160814494147,
+      "F1 Std": 0.12391414683978447,
+      "Acc Last": 0.5,
+      "F1 Last": 0.3924963924963925
+    },
+    {
+      "Model": "Logistic Regression",
+      "CV Mean": 0.6875,
+      "CV Std": 0.05103103630798288,
+      "F1 Mean": 0.6205742898340226,
+      "F1 Std": 0.029462786849605228,
+      "Acc Last": 0.75,
+      "F1 Last": 0.6306174643770551
+    },
+    {
+      "Model": "SVM",
+      "CV Mean": 0.65625,
+      "CV Std": 0.02551551815399144,
+      "F1 Mean": 0.5858377892860652,
+      "F1 Std": 0.08411735397894839,
+      "Acc Last": 0.625,
+      "F1 Last": 0.46715927750410513
+    },
+    {
+      "Model": "XGBoost",
+      "CV Mean": 0.6354166666666666,
+      "CV Std": 0.05311478659992484,
+      "F1 Mean": 0.5527998236331569,
+      "F1 Std": 0.09569025303974894,
+      "Acc Last": 0.5625,
+      "F1 Last": 0.41904761904761906
+    },
+    {
+      "Model": "KNN",
+      "CV Mean": 0.6354166666666666,
+      "CV Std": 0.0820209153542897,
+      "F1 Mean": 0.5462460741872506,
+      "F1 Std": 0.10544600446585287,
+      "Acc Last": 0.5625,
+      "F1 Last": 0.41038961038961036
+    }
+  ],
+  "results": [
+    {
+      "Model": "Random Forest",
+      "Accuracy": 0.6296,
+      "Macro_F1": 0.459
+    },
+    {
+      "Model": "Gradient Boosting",
+      "Accuracy": 0.5926,
+      "Macro_F1": 0.4429
+    },
+    {
+      "Model": "Logistic Regression",
+      "Accuracy": 0.8148,
+      "Macro_F1": 0.5846
+    },
+    {
+      "Model": "SVM",
+      "Accuracy": 0.6667,
+      "Macro_F1": 0.4786
+    },
+    {
+      "Model": "XGBoost",
+      "Accuracy": 0.6296,
+      "Macro_F1": 0.4691
+    },
+    {
+      "Model": "KNN",
+      "Accuracy": 0.7407,
+      "Macro_F1": 0.6339
+    }
+  ]
+}

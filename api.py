@@ -29,7 +29,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from sqlmodel import Field, Session, SQLModel, create_engine, select
+from sqlmodel import Field, Session, SQLModel, create_engine, select, func
 
 from knime_workflow_converter import main as run_pipeline, predecir_partido
 
@@ -136,18 +136,26 @@ class PrediccionUpdate(SQLModel):
 # Startup: crear tablas y cargar Excel
 # ---------------------------------------------------------------------------
 
-def _cargar_excel(session: Session) -> None:
-    if session.exec(select(Partido)).first():
-        return  # Ya cargado en sesiones anteriores
+def _cargar_excel(session: Session) -> int:
+    """Sincroniza la tabla Partido con el Excel.
+    Agrega los partidos que faltan en la DB (incremental). Devuelve el número de
+    filas insertadas. Seguro de llamar múltiples veces."""
     try:
         df = pd.read_excel(DATASET)
     except FileNotFoundError:
-        return
+        return 0
+
+    ids_en_db = set(session.exec(select(Partido.id).where(Partido.activo == True)).all())
+
+    nuevos = 0
     for _, row in df.iterrows():
+        pid = int(row["Partido_id"]) if pd.notna(row.get("Partido_id")) else None
+        if pid is not None and pid in ids_en_db:
+            continue  # ya existe
         goles_e1 = row.get("EQUIPO1_GOLES")
         goles_e2 = row.get("EQUIPO2_GOLES")
         partido = Partido(
-            id=int(row["Partido_id"]) if pd.notna(row.get("Partido_id")) else None,
+            id=pid,
             equipo1=str(row.get("Equipo1", "")),
             equipo2=str(row.get("Equipo2", "")),
             fase=str(row.get("Fase", "")),
@@ -156,7 +164,11 @@ def _cargar_excel(session: Session) -> None:
             fecha=str(row["Fecha"]) if pd.notna(row.get("Fecha")) else None,
         )
         session.add(partido)
-    session.commit()
+        nuevos += 1
+
+    if nuevos:
+        session.commit()
+    return nuevos
 
 
 @asynccontextmanager
@@ -556,6 +568,16 @@ def predecir_rapido(data: PrediccionRapida, session: Session = Depends(get_sessi
 @app.get("/api/health")
 def health():
     return {"status": "ok", "evaluaciones_en_memoria": list(_resultados_pipeline.keys())}
+
+
+@app.post("/api/sync")
+def sync_dataset(session: Session = Depends(get_session)):
+    """Sincroniza la tabla Partido con el Excel: agrega los partidos nuevos.
+    Llamar después de agregar partidos con agregar_partido.py para reflejar
+    los cambios en el dashboard sin reiniciar el servidor."""
+    nuevos = _cargar_excel(session)
+    total = session.exec(select(func.count(Partido.id)).where(Partido.activo == True)).one()
+    return {"nuevos_agregados": nuevos, "total_partidos": total}
 
 
 # ---------------------------------------------------------------------------
