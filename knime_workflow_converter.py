@@ -1003,6 +1003,9 @@ def main(filepath, test_size=0.2, random_state=42):
     feature_importance = []
     try:
         rf_pipeline = models.get('Random Forest')
+        # CalibratedClassifierCV envuelve el Pipeline — hay que bajar con .estimator
+        if hasattr(rf_pipeline, 'estimator'):
+            rf_pipeline = rf_pipeline.estimator
         if rf_pipeline is not None:
             sk_step = rf_pipeline.named_steps.get('sk')
             rf_step = rf_pipeline.named_steps.get('rf')
@@ -1018,27 +1021,32 @@ def main(filepath, test_size=0.2, random_state=42):
     except Exception as e:
         print(f"   ⚠️  No se pudo calcular feature importance: {e}")
 
-    # Entrenar modelos sobre el dataset COMPLETO (no solo train split) para
-    # que predecir_partido los use directamente sin re-entrenar en cada llamada.
-    # Esto hace que las predicciones sean casi instantáneas.
-    print("⚡ Entrenando modelos de predicción sobre dataset completo...")
-    full_models = build_classifiers(seed=42, n_features=len(X.columns))
-    for clf in full_models.values():
-        clf.fit(X, y)
+    # Entrenar N_PRED_SEEDS semillas por clasificador/regresor sobre el dataset
+    # completo. predecir_partido() promedia sus predicciones (ensemble por
+    # diversidad de semilla) sin necesidad de re-entrenar nada en cada llamada.
+    N_PRED_SEEDS = 5
+    print(f"⚡ Entrenando modelos de predicción ({N_PRED_SEEDS} semillas × dataset completo)...")
+    full_models: dict = {}
+    for seed in range(N_PRED_SEEDS):
+        for name, clf in build_classifiers(seed=seed, n_features=len(X.columns)).items():
+            clf.fit(X, y)
+            full_models.setdefault(name, []).append(clf)
 
-    from sklearn.ensemble import RandomForestRegressor
-    from xgboost import XGBRegressor
-    full_reg_r1 = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
-    full_reg_r2 = RandomForestRegressor(n_estimators=100, random_state=43, n_jobs=-1)
-    full_reg_x1 = XGBRegressor(n_estimators=100, max_depth=3, learning_rate=0.1,
-                               random_state=42, verbosity=0)
-    full_reg_x2 = XGBRegressor(n_estimators=100, max_depth=3, learning_rate=0.1,
-                               random_state=43, verbosity=0)
     y1_full = df_model['EQUIPO1_GOLES']
     y2_full = df_model['EQUIPO2_GOLES']
-    full_reg_r1.fit(X, y1_full); full_reg_r2.fit(X, y2_full)
-    full_reg_x1.fit(X, y1_full); full_reg_x2.fit(X, y2_full)
-    print("   ✓ Modelos de predicción listos (predicción instantánea)")
+    full_regressors: dict = {}
+    for seed in range(N_PRED_SEEDS):
+        r_rf1  = RandomForestRegressor(n_estimators=100, random_state=seed,        n_jobs=-1)
+        r_rf2  = RandomForestRegressor(n_estimators=100, random_state=seed + 1000, n_jobs=-1)
+        r_xgb1 = XGBRegressor(n_estimators=100, max_depth=3, learning_rate=0.1,
+                               random_state=seed,        verbosity=0)
+        r_xgb2 = XGBRegressor(n_estimators=100, max_depth=3, learning_rate=0.1,
+                               random_state=seed + 1000, verbosity=0)
+        r_rf1.fit(X, y1_full); r_rf2.fit(X, y2_full)
+        r_xgb1.fit(X, y1_full); r_xgb2.fit(X, y2_full)
+        full_regressors.setdefault('Random Forest', []).append((r_rf1, r_rf2))
+        full_regressors.setdefault('XGBoost',       []).append((r_xgb1, r_xgb2))
+    print(f"   ✓ {N_PRED_SEEDS} semillas × {len(full_models)} clasificadores + {len(full_regressors)} regresores listos")
 
     return {
         'df': df,
@@ -1056,10 +1064,7 @@ def main(filepath, test_size=0.2, random_state=42):
         'xg_historial': xg_historial,
         'feature_importance': feature_importance,
         'full_models': full_models,
-        'full_regressors': {
-            'Random Forest': (full_reg_r1, full_reg_r2),
-            'XGBoost':       (full_reg_x1, full_reg_x2),
-        },
+        'full_regressors': full_regressors,
     }
 
 
@@ -1226,10 +1231,12 @@ def predecir_partido(equipo1, equipo2, results, n_runs=20, fase='Liga'):
     print(f"{'='*58}")
 
     if full_models:
-        print("   Prediciendo con modelos pre-entrenados...", end='', flush=True)
+        n_seeds = len(next(iter(full_models.values())))
+        print(f"   Prediciendo con {n_seeds} semillas pre-entrenadas...", end='', flush=True)
         for name in model_names:
             if name in full_models:
-                probas_acum[name].append(full_models[name].predict_proba(X_pred)[0])
+                for clf in full_models[name]:
+                    probas_acum[name].append(clf.predict_proba(X_pred)[0])
         print(" listo.")
     else:
         print(f"   Entrenando ensemble ({n_runs} corridas)...", end='', flush=True)
@@ -1282,16 +1289,13 @@ def predecir_partido(equipo1, equipo2, results, n_runs=20, fase='Liga'):
     goles_out = []
     for reg_name in (full_regressors or make_regs(0)).keys():
         if full_regressors and reg_name in full_regressors:
-            r1, r2 = full_regressors[reg_name]
-            g1v = float(r1.predict(X_pred)[0])
-            g2v = float(r2.predict(X_pred)[0])
-            if hasattr(r1, 'estimators_'):
-                s1 = float(np.std([e.predict(X_pred)[0] for e in r1.estimators_]))
-                s2 = float(np.std([e.predict(X_pred)[0] for e in r2.estimators_]))
-            else:
-                s1, s2 = 0.0, 0.0
-            g1 = int(max(0, round(g1v)))
-            g2 = int(max(0, round(g2v)))
+            g1_preds, g2_preds = [], []
+            for r1, r2 in full_regressors[reg_name]:
+                g1_preds.append(float(r1.predict(X_pred)[0]))
+                g2_preds.append(float(r2.predict(X_pred)[0]))
+            g1 = int(max(0, round(np.mean(g1_preds))))
+            g2 = int(max(0, round(np.mean(g2_preds))))
+            s1, s2 = float(np.std(g1_preds)), float(np.std(g2_preds))
         else:
             g1_preds, g2_preds = [], []
             for seed in range(n_runs):
@@ -1350,7 +1354,7 @@ if __name__ == "__main__":
         print("   " + " | ".join(equipos))
 
         # ── Predicciones de partidos futuros ─────────────────────────────
-        predecir_partido("Kairat Almaty",  "Olympiacos",       results)
+        predecir_partido("Paris",  "Juventus",       results)
         predecir_partido("Inter",    "Liverpool", results)
         predecir_partido("Monaco",    "Galatasaray",          results)
 

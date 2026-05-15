@@ -409,15 +409,11 @@ def crear_prediccion(data: PrediccionCreate, session: Session = Depends(get_sess
     if not ev or not ev.activo:
         raise HTTPException(status_code=404, detail=f"Evaluación {data.evaluacion_id} no encontrada")
 
-    if data.evaluacion_id not in _resultados_pipeline:
-        raise HTTPException(
-            status_code=409,
-            detail="El pipeline no está en memoria — vuelve a ejecutar POST /evaluaciones",
-        )
+    results = _get_or_run_pipeline(data.evaluacion_id, session)
 
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
-        predecir_partido(data.equipo1, data.equipo2, _resultados_pipeline[data.evaluacion_id], n_runs=data.n_runs)
+        predecir_partido(data.equipo1, data.equipo2, results, n_runs=data.n_runs)
 
     prediccion = Prediccion(
         equipo1=data.equipo1,
