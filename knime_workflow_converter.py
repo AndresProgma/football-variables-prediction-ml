@@ -1018,6 +1018,28 @@ def main(filepath, test_size=0.2, random_state=42):
     except Exception as e:
         print(f"   ⚠️  No se pudo calcular feature importance: {e}")
 
+    # Entrenar modelos sobre el dataset COMPLETO (no solo train split) para
+    # que predecir_partido los use directamente sin re-entrenar en cada llamada.
+    # Esto hace que las predicciones sean casi instantáneas.
+    print("⚡ Entrenando modelos de predicción sobre dataset completo...")
+    full_models = build_classifiers(seed=42, n_features=len(X.columns))
+    for clf in full_models.values():
+        clf.fit(X, y)
+
+    from sklearn.ensemble import RandomForestRegressor
+    from xgboost import XGBRegressor
+    full_reg_r1 = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
+    full_reg_r2 = RandomForestRegressor(n_estimators=100, random_state=43, n_jobs=-1)
+    full_reg_x1 = XGBRegressor(n_estimators=100, max_depth=3, learning_rate=0.1,
+                               random_state=42, verbosity=0)
+    full_reg_x2 = XGBRegressor(n_estimators=100, max_depth=3, learning_rate=0.1,
+                               random_state=43, verbosity=0)
+    y1_full = df_model['EQUIPO1_GOLES']
+    y2_full = df_model['EQUIPO2_GOLES']
+    full_reg_r1.fit(X, y1_full); full_reg_r2.fit(X, y2_full)
+    full_reg_x1.fit(X, y1_full); full_reg_x2.fit(X, y2_full)
+    print("   ✓ Modelos de predicción listos (predicción instantánea)")
+
     return {
         'df': df,
         'df_model': df_model,
@@ -1033,6 +1055,11 @@ def main(filepath, test_size=0.2, random_state=42):
         'h2h_log': h2h_log,
         'xg_historial': xg_historial,
         'feature_importance': feature_importance,
+        'full_models': full_models,
+        'full_regressors': {
+            'Random Forest': (full_reg_r1, full_reg_r2),
+            'XGBoost':       (full_reg_x1, full_reg_x2),
+        },
     }
 
 
@@ -1192,17 +1219,25 @@ def predecir_partido(equipo1, equipo2, results, n_runs=20, fase='Liga'):
 
     probas_acum = {name: [] for name in model_names}
 
+    full_models = results.get('full_models')
+
     print(f"\n{'='*58}")
-    print(f"🔮  {equipo1}  vs  {equipo2}  ({n_runs} corridas por modelo)")
+    print(f"🔮  {equipo1}  vs  {equipo2}")
     print(f"{'='*58}")
-    print("   Entrenando ensemble...", end='', flush=True)
 
-    for seed in range(n_runs):
-        for name, clf in make_clfs(seed).items():
-            clf.fit(X_full, y_full)
-            probas_acum[name].append(clf.predict_proba(X_pred)[0])
-
-    print(" listo.")
+    if full_models:
+        print("   Prediciendo con modelos pre-entrenados...", end='', flush=True)
+        for name in model_names:
+            if name in full_models:
+                probas_acum[name].append(full_models[name].predict_proba(X_pred)[0])
+        print(" listo.")
+    else:
+        print(f"   Entrenando ensemble ({n_runs} corridas)...", end='', flush=True)
+        for seed in range(n_runs):
+            for name, clf in make_clfs(seed).items():
+                clf.fit(X_full, y_full)
+                probas_acum[name].append(clf.predict_proba(X_pred)[0])
+        print(" listo.")
 
     # --- Resultados clasificadores ---
     win_idx  = classes.index('Win')  if 'Win'  in classes else None
@@ -1241,20 +1276,33 @@ def predecir_partido(equipo1, equipo2, results, n_runs=20, fase='Liga'):
                                            random_state=seed+1000, verbosity=0)),
         }
 
+    full_regressors = results.get('full_regressors')
     print(f"\n  {'Modelo':<16}  Marcador predicho")
     print(f"  {'-'*42}")
     goles_out = []
-    for reg_name in make_regs(0).keys():
-        g1_preds, g2_preds = [], []
-        for seed in range(n_runs):
-            r1, r2 = make_regs(seed)[reg_name]
-            r1.fit(X_full, y1_full)
-            r2.fit(X_full, y2_full)
-            g1_preds.append(r1.predict(X_pred)[0])
-            g2_preds.append(r2.predict(X_pred)[0])
-        g1 = int(max(0, round(np.mean(g1_preds))))
-        g2 = int(max(0, round(np.mean(g2_preds))))
-        s1, s2 = float(np.std(g1_preds)), float(np.std(g2_preds))
+    for reg_name in (full_regressors or make_regs(0)).keys():
+        if full_regressors and reg_name in full_regressors:
+            r1, r2 = full_regressors[reg_name]
+            g1v = float(r1.predict(X_pred)[0])
+            g2v = float(r2.predict(X_pred)[0])
+            if hasattr(r1, 'estimators_'):
+                s1 = float(np.std([e.predict(X_pred)[0] for e in r1.estimators_]))
+                s2 = float(np.std([e.predict(X_pred)[0] for e in r2.estimators_]))
+            else:
+                s1, s2 = 0.0, 0.0
+            g1 = int(max(0, round(g1v)))
+            g2 = int(max(0, round(g2v)))
+        else:
+            g1_preds, g2_preds = [], []
+            for seed in range(n_runs):
+                r1, r2 = make_regs(seed)[reg_name]
+                r1.fit(X_full, y1_full)
+                r2.fit(X_full, y2_full)
+                g1_preds.append(r1.predict(X_pred)[0])
+                g2_preds.append(r2.predict(X_pred)[0])
+            g1 = int(max(0, round(np.mean(g1_preds))))
+            g2 = int(max(0, round(np.mean(g2_preds))))
+            s1, s2 = float(np.std(g1_preds)), float(np.std(g2_preds))
         print(f"  {reg_name:<16}  {equipo1} {g1} – {g2} {equipo2}  (±{s1:.1f} / ±{s2:.1f})")
         goles_out.append({'modelo': reg_name, 'g1': g1, 'g2': g2, 'std1': s1, 'std2': s2})
 
