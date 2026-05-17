@@ -20,12 +20,13 @@ import contextlib
 import io
 import json
 import os
+import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
 import pandas as pd
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -41,6 +42,8 @@ engine = create_engine(DATABASE_URL)
 
 # Pipeline results guardados en memoria (demasiado pesados para DB)
 _resultados_pipeline: dict[int, dict] = {}
+# Estado del entrenamiento en background: "training" | "ready" | "error:..."
+_training_status: dict[int, str] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -171,11 +174,39 @@ def _cargar_excel(session: Session) -> int:
     return nuevos
 
 
+def _run_training_background(evaluacion_id: int, filepath: str) -> None:
+    """Entrena el pipeline en un hilo secundario y actualiza DB + memoria."""
+    try:
+        _training_status[evaluacion_id] = "training"
+        results = run_pipeline(filepath)
+        # Actualizar DB primero, luego memoria (evita race condition con status endpoint)
+        with Session(engine) as sess:
+            ev = sess.get(Evaluacion, evaluacion_id)
+            if ev:
+                ev.resultados = results["results"].to_json(orient="records")
+                ev.cv_resultados = results["cv_results"].to_json(orient="records")
+                sess.add(ev)
+                sess.commit()
+        _resultados_pipeline[evaluacion_id] = results
+        _training_status[evaluacion_id] = "ready"
+    except Exception as exc:
+        _training_status[evaluacion_id] = f"error: {exc}"
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
         _cargar_excel(session)
+        # Si no hay ninguna evaluación entrenada, iniciar entrenamiento automático
+        evals = session.exec(select(Evaluacion).where(Evaluacion.activo == True)).all()
+        if not evals and Path(DATASET).exists():
+            ev = Evaluacion(filepath=DATASET, resultados="[]", cv_resultados="[]")
+            session.add(ev)
+            session.commit()
+            session.refresh(ev)
+            t = threading.Thread(target=_run_training_background, args=(ev.id, DATASET), daemon=True)
+            t.start()
     yield
 
 
@@ -209,15 +240,20 @@ def get_session():
 
 
 def _get_or_run_pipeline(evaluacion_id: int, session: Session) -> dict:
-    """Devuelve los resultados en memoria, o reejecuta el pipeline si se reinició el server."""
+    """Devuelve los resultados en memoria; si el servidor se reinició, re-entrena en background."""
     if evaluacion_id in _resultados_pipeline:
         return _resultados_pipeline[evaluacion_id]
     ev = session.get(Evaluacion, evaluacion_id)
     if not ev or not ev.activo:
         raise HTTPException(status_code=404, detail=f"Evaluación {evaluacion_id} no encontrada")
-    results = run_pipeline(ev.filepath)
-    _resultados_pipeline[evaluacion_id] = results
-    return results
+    # Si ya está entrenando en background, informar al cliente
+    status = _training_status.get(evaluacion_id, "")
+    if status == "training":
+        raise HTTPException(status_code=503, detail="Modelo entrenando, intenta de nuevo en unos segundos")
+    # Re-entrenar en background (puede pasar al despertar de un sleep de Render)
+    t = threading.Thread(target=_run_training_background, args=(evaluacion_id, ev.filepath), daemon=True)
+    t.start()
+    raise HTTPException(status_code=503, detail="Modelo no está en memoria — entrenando en background, reintenta en ~90 s")
 
 
 def _resolver_predicciones_para_partido(partido: Partido, session: Session) -> int:
@@ -329,25 +365,16 @@ def desactivar_partido(partido_id: int, session: Session = Depends(get_session))
 # ---------------------------------------------------------------------------
 
 @app.post("/evaluaciones", response_model=Evaluacion, status_code=201)
-def crear_evaluacion(data: EvaluacionCreate, session: Session = Depends(get_session)):
-    """Ejecuta el pipeline completo y guarda los resultados de accuracy."""
-    try:
-        results = run_pipeline(data.filepath)
-    except FileNotFoundError:
+def crear_evaluacion(data: EvaluacionCreate, background_tasks: BackgroundTasks,
+                     session: Session = Depends(get_session)):
+    """Crea la evaluación y entrena el pipeline en segundo plano (no bloquea)."""
+    if not Path(data.filepath).exists():
         raise HTTPException(status_code=422, detail=f"Archivo no encontrado: {data.filepath}")
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-
-    evaluacion = Evaluacion(
-        filepath=data.filepath,
-        resultados=results["results"].to_json(orient="records"),
-        cv_resultados=results["cv_results"].to_json(orient="records"),
-    )
+    evaluacion = Evaluacion(filepath=data.filepath, resultados="[]", cv_resultados="[]")
     session.add(evaluacion)
     session.commit()
     session.refresh(evaluacion)
-
-    _resultados_pipeline[evaluacion.id] = results
+    background_tasks.add_task(_run_training_background, evaluacion.id, data.filepath)
     return evaluacion
 
 
@@ -365,24 +392,21 @@ def obtener_evaluacion(evaluacion_id: int, session: Session = Depends(get_sessio
 
 
 @app.put("/evaluaciones/{evaluacion_id}", response_model=Evaluacion)
-def actualizar_evaluacion(evaluacion_id: int, data: EvaluacionUpdate, session: Session = Depends(get_session)):
-    """Re-ejecuta el pipeline con un nuevo filepath y actualiza los resultados."""
+def actualizar_evaluacion(evaluacion_id: int, data: EvaluacionUpdate,
+                          background_tasks: BackgroundTasks,
+                          session: Session = Depends(get_session)):
+    """Re-entrena en background con nuevo filepath."""
     ev = session.get(Evaluacion, evaluacion_id)
     if not ev or not ev.activo:
         raise HTTPException(status_code=404, detail="Evaluación no encontrada")
-    try:
-        results = run_pipeline(data.filepath)
-    except FileNotFoundError:
+    if not Path(data.filepath).exists():
         raise HTTPException(status_code=422, detail=f"Archivo no encontrado: {data.filepath}")
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
     ev.filepath = data.filepath
-    ev.resultados = results["results"].to_json(orient="records")
-    ev.cv_resultados = results["cv_results"].to_json(orient="records")
     session.add(ev)
     session.commit()
     session.refresh(ev)
-    _resultados_pipeline[evaluacion_id] = results
+    _resultados_pipeline.pop(evaluacion_id, None)
+    background_tasks.add_task(_run_training_background, evaluacion_id, data.filepath)
     return ev
 
 
@@ -559,6 +583,15 @@ def predecir_rapido(data: PrediccionRapida, session: Session = Depends(get_sessi
         raise HTTPException(status_code=500, detail="predecir_partido() no devolvió datos")
     salida["log"] = buf.getvalue()
     return salida
+
+
+@app.get("/api/evaluaciones/{evaluacion_id}/status")
+def estado_entrenamiento(evaluacion_id: int):
+    """Polling: devuelve 'training' | 'ready' | 'error:...' | 'unknown'."""
+    if evaluacion_id in _resultados_pipeline:
+        return {"status": "ready"}
+    s = _training_status.get(evaluacion_id, "unknown")
+    return {"status": s}
 
 
 @app.get("/api/health")

@@ -32,31 +32,58 @@ async function init() {
     await api.health();
     $('health').classList.add('text-emerald-400');
 
-    // Cargar/crear evaluación
+    // Cargar datos que no dependen del modelo (inmediato)
+    setLoading(true, 'Cargando datos...');
+    await Promise.all([cargarEquipos(), cargarPartidos(), cargarTrackPublico()]);
+    renderKpis();
+
+    // Obtener o iniciar evaluación (no bloquea)
     const evals = await api.evaluaciones();
     if (evals.length > 0) {
       state.evaluacionId = evals[evals.length - 1].id;
     } else {
-      setLoading(true, 'Entrenando modelo por primera vez (1-2 min)...');
       const nuevaEv = await api.crearEvaluacion();
       state.evaluacionId = nuevaEv.id;
     }
     $('eval-id-text').textContent = `#${state.evaluacionId}`;
 
-    setLoading(true, 'Cargando datos del dashboard...');
+    // Esperar a que el modelo esté listo (polling)
+    await esperarModelo(state.evaluacionId);
+
+    // Cargar datos que sí dependen del modelo
     await Promise.all([
-      cargarEquipos(), cargarPartidos(), cargarMetricas(), cargarRanking(),
-      cargarTrackRecord(), cargarTrackPublico(), cargarFeatureImportance(),
+      cargarMetricas(), cargarRanking(),
+      cargarTrackRecord(), cargarFeatureImportance(),
     ]);
     renderKpis();
   } catch (err) {
     console.error(err);
     $('health').classList.remove('text-emerald-400');
     $('health').classList.add('text-rose-500');
-    alert(`Error al inicializar: ${err.message}`);
-  } finally {
     setLoading(false);
+    alert(`Error al inicializar: ${err.message}`);
+    return;
   }
+  setLoading(false);
+}
+
+async function esperarModelo(evaluacionId) {
+  const MAX_ESPERA_MS = 5 * 60 * 1000; // 5 minutos
+  const INTERVALO_MS = 4000;
+  const inicio = Date.now();
+  while (Date.now() - inicio < MAX_ESPERA_MS) {
+    setLoading(true, 'Entrenando modelo... (puede tardar 1-2 min en el primer arranque)');
+    try {
+      const res = await fetch(`${API_BASE}/api/evaluaciones/${evaluacionId}/status`);
+      const data = await res.json();
+      if (data.status === 'ready') return;
+      if (data.status && data.status.startsWith('error')) throw new Error(data.status);
+    } catch (e) {
+      if (e.message.startsWith('error')) throw e;
+    }
+    await new Promise(r => setTimeout(r, INTERVALO_MS));
+  }
+  throw new Error('Timeout: el modelo tardó demasiado en entrenar');
 }
 
 // ---------------------------------------------------------------------------
@@ -478,10 +505,10 @@ $('btn-sync').addEventListener('click', async () => {
 $('btn-evaluar').addEventListener('click', async () => {
   if (!confirm('Reentrenar el modelo desde cero? (1-2 min)')) return;
   try {
-    setLoading(true, 'Reentrenando pipeline completo...');
     const nuevaEv = await api.crearEvaluacion();
     state.evaluacionId = nuevaEv.id;
     $('eval-id-text').textContent = `#${state.evaluacionId}`;
+    await esperarModelo(state.evaluacionId);
     await Promise.all([
       cargarPartidos(), cargarMetricas(), cargarRanking(),
       cargarTrackRecord(), cargarTrackPublico(), cargarFeatureImportance(),
