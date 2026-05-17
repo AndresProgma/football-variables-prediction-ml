@@ -20,7 +20,6 @@ import contextlib
 import io
 import json
 import os
-import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
@@ -33,6 +32,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlmodel import Field, Session, SQLModel, create_engine, select, func
 
 from knime_workflow_converter import main as run_pipeline, predecir_partido
+from predecir_v2 import predecir_partido_v2
 
 _DEFAULT_DATASET = Path(__file__).parent / "creando_dataset_modificado.xlsx"
 DATASET = os.getenv("DATASET_PATH", str(_DEFAULT_DATASET))
@@ -42,7 +42,7 @@ engine = create_engine(DATABASE_URL)
 
 # Pipeline results guardados en memoria (demasiado pesados para DB)
 _resultados_pipeline: dict[int, dict] = {}
-# Estado del entrenamiento en background: "training" | "ready" | "error:..."
+# Estado de entrenamiento: "training" | "ready" | "error:<msg>"
 _training_status: dict[int, str] = {}
 
 
@@ -174,39 +174,11 @@ def _cargar_excel(session: Session) -> int:
     return nuevos
 
 
-def _run_training_background(evaluacion_id: int, filepath: str) -> None:
-    """Entrena el pipeline en un hilo secundario y actualiza DB + memoria."""
-    try:
-        _training_status[evaluacion_id] = "training"
-        results = run_pipeline(filepath)
-        # Actualizar DB primero, luego memoria (evita race condition con status endpoint)
-        with Session(engine) as sess:
-            ev = sess.get(Evaluacion, evaluacion_id)
-            if ev:
-                ev.resultados = results["results"].to_json(orient="records")
-                ev.cv_resultados = results["cv_results"].to_json(orient="records")
-                sess.add(ev)
-                sess.commit()
-        _resultados_pipeline[evaluacion_id] = results
-        _training_status[evaluacion_id] = "ready"
-    except Exception as exc:
-        _training_status[evaluacion_id] = f"error: {exc}"
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
         _cargar_excel(session)
-        # Si no hay ninguna evaluación entrenada, iniciar entrenamiento automático
-        evals = session.exec(select(Evaluacion).where(Evaluacion.activo == True)).all()
-        if not evals and Path(DATASET).exists():
-            ev = Evaluacion(filepath=DATASET, resultados="[]", cv_resultados="[]")
-            session.add(ev)
-            session.commit()
-            session.refresh(ev)
-            t = threading.Thread(target=_run_training_background, args=(ev.id, DATASET), daemon=True)
-            t.start()
     yield
 
 
@@ -239,21 +211,38 @@ def get_session():
         yield session
 
 
+def _run_pipeline_background(evaluacion_id: int, filepath: str) -> None:
+    """Entrena el pipeline en background y actualiza la DB cuando termina.
+    Después genera automáticamente el record histórico honesto (predecir_v2)."""
+    try:
+        results = run_pipeline(filepath)
+        with Session(engine) as s:
+            ev = s.get(Evaluacion, evaluacion_id)
+            if ev:
+                ev.resultados    = results["results"].to_json(orient="records")
+                ev.cv_resultados = results["cv_results"].to_json(orient="records")
+                s.add(ev)
+                s.commit()
+        _resultados_pipeline[evaluacion_id] = results
+        _training_status[evaluacion_id] = "ready"
+    except Exception as exc:
+        _training_status[evaluacion_id] = f"error:{exc}"
+        return
+
+    # Generar record histórico honesto con predecir_v2 (automático, sin botón)
+    _generar_record_background(n_partidos=35)
+
+
 def _get_or_run_pipeline(evaluacion_id: int, session: Session) -> dict:
-    """Devuelve los resultados en memoria; si el servidor se reinició, re-entrena en background."""
+    """Devuelve los resultados en memoria, o reejecuta el pipeline si se reinició el server."""
     if evaluacion_id in _resultados_pipeline:
         return _resultados_pipeline[evaluacion_id]
     ev = session.get(Evaluacion, evaluacion_id)
     if not ev or not ev.activo:
         raise HTTPException(status_code=404, detail=f"Evaluación {evaluacion_id} no encontrada")
-    # Si ya está entrenando en background, informar al cliente
-    status = _training_status.get(evaluacion_id, "")
-    if status == "training":
-        raise HTTPException(status_code=503, detail="Modelo entrenando, intenta de nuevo en unos segundos")
-    # Re-entrenar en background (puede pasar al despertar de un sleep de Render)
-    t = threading.Thread(target=_run_training_background, args=(evaluacion_id, ev.filepath), daemon=True)
-    t.start()
-    raise HTTPException(status_code=503, detail="Modelo no está en memoria — entrenando en background, reintenta en ~90 s")
+    results = run_pipeline(ev.filepath)
+    _resultados_pipeline[evaluacion_id] = results
+    return results
 
 
 def _resolver_predicciones_para_partido(partido: Partido, session: Session) -> int:
@@ -367,14 +356,17 @@ def desactivar_partido(partido_id: int, session: Session = Depends(get_session))
 @app.post("/evaluaciones", response_model=Evaluacion, status_code=201)
 def crear_evaluacion(data: EvaluacionCreate, background_tasks: BackgroundTasks,
                      session: Session = Depends(get_session)):
-    """Crea la evaluación y entrena el pipeline en segundo plano (no bloquea)."""
+    """Inicia el pipeline en background y devuelve la evaluación inmediatamente."""
     if not Path(data.filepath).exists():
         raise HTTPException(status_code=422, detail=f"Archivo no encontrado: {data.filepath}")
+
     evaluacion = Evaluacion(filepath=data.filepath, resultados="[]", cv_resultados="[]")
     session.add(evaluacion)
     session.commit()
     session.refresh(evaluacion)
-    background_tasks.add_task(_run_training_background, evaluacion.id, data.filepath)
+
+    _training_status[evaluacion.id] = "training"
+    background_tasks.add_task(_run_pipeline_background, evaluacion.id, data.filepath)
     return evaluacion
 
 
@@ -392,21 +384,24 @@ def obtener_evaluacion(evaluacion_id: int, session: Session = Depends(get_sessio
 
 
 @app.put("/evaluaciones/{evaluacion_id}", response_model=Evaluacion)
-def actualizar_evaluacion(evaluacion_id: int, data: EvaluacionUpdate,
-                          background_tasks: BackgroundTasks,
-                          session: Session = Depends(get_session)):
-    """Re-entrena en background con nuevo filepath."""
+def actualizar_evaluacion(evaluacion_id: int, data: EvaluacionUpdate, session: Session = Depends(get_session)):
+    """Re-ejecuta el pipeline con un nuevo filepath y actualiza los resultados."""
     ev = session.get(Evaluacion, evaluacion_id)
     if not ev or not ev.activo:
         raise HTTPException(status_code=404, detail="Evaluación no encontrada")
-    if not Path(data.filepath).exists():
+    try:
+        results = run_pipeline(data.filepath)
+    except FileNotFoundError:
         raise HTTPException(status_code=422, detail=f"Archivo no encontrado: {data.filepath}")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
     ev.filepath = data.filepath
+    ev.resultados = results["results"].to_json(orient="records")
+    ev.cv_resultados = results["cv_results"].to_json(orient="records")
     session.add(ev)
     session.commit()
     session.refresh(ev)
-    _resultados_pipeline.pop(evaluacion_id, None)
-    background_tasks.add_task(_run_training_background, evaluacion_id, data.filepath)
+    _resultados_pipeline[evaluacion_id] = results
     return ev
 
 
@@ -507,6 +502,13 @@ def desactivar_prediccion(prediccion_id: int, session: Session = Depends(get_ses
 # Endpoints "dashboard" — devuelven JSON estructurado para el frontend
 # ---------------------------------------------------------------------------
 
+@app.get("/api/evaluaciones/{evaluacion_id}/status")
+def estado_entrenamiento(evaluacion_id: int):
+    """Devuelve el estado del entrenamiento: training | ready | error:<msg>"""
+    status = _training_status.get(evaluacion_id, "ready")
+    return {"id": evaluacion_id, "status": status}
+
+
 @app.get("/api/equipos")
 def listar_equipos(session: Session = Depends(get_session)):
     """Lista única de equipos del dataset (para los dropdowns del predictor)."""
@@ -548,14 +550,31 @@ def feature_importance(evaluacion_id: int, top: int = 15, session: Session = Dep
     return {"top_features": fi[:top], "total": len(fi)}
 
 
+@app.get("/api/record")
+def record_publico(session: Session = Depends(get_session)):
+    """Predicciones del test cronológico de la evaluación más reciente (público)."""
+    evals = session.exec(select(Evaluacion).where(Evaluacion.activo == True)).all()
+    if not evals:
+        return {"predicciones": []}
+    ev = max(evals, key=lambda e: e.id)
+    results = _get_or_run_pipeline(ev.id, session)
+    pred_df = results.get("predictions")
+    if pred_df is None:
+        return {"predicciones": []}
+    return {"predicciones": json.loads(pred_df.to_json(orient="records"))}
+
+
 @app.get("/api/evaluaciones/{evaluacion_id}/predicciones-test")
 def predicciones_test(evaluacion_id: int, session: Session = Depends(get_session)):
-    """Predicciones del split de test (20% más reciente) vs resultado real."""
+    """Predicciones del test cronológico — usa record_historico.json si existe."""
+    if RECORD_HISTORICO_FILE.exists():
+        data = json.loads(RECORD_HISTORICO_FILE.read_text(encoding="utf-8"))
+        return {"predicciones": data, "tipo": "v2_honesto"}
     results = _get_or_run_pipeline(evaluacion_id, session)
     pred_df = results.get("predictions")
     if pred_df is None:
         raise HTTPException(status_code=500, detail="No hay predicciones de test")
-    return {"predicciones": json.loads(pred_df.to_json(orient="records"))}
+    return {"predicciones": json.loads(pred_df.to_json(orient="records")), "tipo": "test_split"}
 
 
 class PrediccionRapida(SQLModel):
@@ -583,15 +602,6 @@ def predecir_rapido(data: PrediccionRapida, session: Session = Depends(get_sessi
         raise HTTPException(status_code=500, detail="predecir_partido() no devolvió datos")
     salida["log"] = buf.getvalue()
     return salida
-
-
-@app.get("/api/evaluaciones/{evaluacion_id}/status")
-def estado_entrenamiento(evaluacion_id: int):
-    """Polling: devuelve 'training' | 'ready' | 'error:...' | 'unknown'."""
-    if evaluacion_id in _resultados_pipeline:
-        return {"status": "ready"}
-    s = _training_status.get(evaluacion_id, "unknown")
-    return {"status": s}
 
 
 @app.get("/api/health")
@@ -683,6 +693,28 @@ def desactivar_track(track_id: int, session: Session = Depends(get_session)):
     session.commit()
 
 
+class ResolverTrackBody(SQLModel):
+    resultado_real: str
+    g1_real: int = 0
+    g2_real: int = 0
+
+
+@app.post("/api/track/{track_id}/resolver", response_model=PrediccionTrack)
+def resolver_manual_track(track_id: int, data: ResolverTrackBody, session: Session = Depends(get_session)):
+    """Resolver manualmente una predicción del track record (admin)."""
+    t = session.get(PrediccionTrack, track_id)
+    if not t or not t.activo:
+        raise HTTPException(status_code=404, detail="Predicción no encontrada")
+    t.resultado_real = data.resultado_real
+    t.g1_real = data.g1_real
+    t.g2_real = data.g2_real
+    t.acierto = (data.resultado_real == t.pred_consenso)
+    session.add(t)
+    session.commit()
+    session.refresh(t)
+    return t
+
+
 @app.get("/api/track/stats")
 def stats_track_record(session: Session = Depends(get_session)):
     """Estadísticas agregadas del track record público (lo que verá la audiencia)."""
@@ -714,6 +746,153 @@ def stats_track_record(session: Session = Depends(get_session)):
         'accuracy_global': round(accuracy, 4),
         'por_clase_predicha': por_clase,
     }
+
+
+# ---------------------------------------------------------------------------
+# Featured Pick del Día (admin lo configura, público lo ve)
+# ---------------------------------------------------------------------------
+
+FEATURED_PICK_FILE  = Path(__file__).parent / "featured_pick.json"
+RECORD_HISTORICO_FILE = Path(__file__).parent / "record_historico.json"
+
+# Estado del generador de record: "idle" | "running" | "done" | "error:<msg>"
+_record_status: dict = {"status": "idle", "progreso": 0, "total": 0}
+
+
+@app.get("/admin")
+def admin_page():
+    return FileResponse("static/admin.html")
+
+
+@app.get("/api/featured-pick")
+def get_featured_pick():
+    """Retorna el partido destacado del día configurado por el admin."""
+    if FEATURED_PICK_FILE.exists():
+        return json.loads(FEATURED_PICK_FILE.read_text(encoding="utf-8"))
+    return {}
+
+
+class ValorBet(SQLModel):
+    nombre: str
+    descripcion: str = ""
+    porcentaje: int
+
+
+class FeaturedPickBody(SQLModel):
+    equipo1: str
+    equipo2: str
+    hora: str = "21:00"
+    fase: str = "UCL"
+    prob_win: float
+    prob_draw: float
+    prob_loss: float
+    valores: list[ValorBet] = []
+    mercados: Optional[dict] = None
+    modelos: Optional[list] = None
+    goles: Optional[list] = None
+    ultimos_e1: Optional[list] = None
+    ultimos_e2: Optional[list] = None
+
+
+@app.delete("/api/admin/featured-pick", status_code=204)
+def delete_featured_pick():
+    """Elimina el pick del día."""
+    if FEATURED_PICK_FILE.exists():
+        FEATURED_PICK_FILE.unlink()
+
+
+@app.post("/api/admin/featured-pick")
+def set_featured_pick(data: FeaturedPickBody):
+    """Guarda el partido destacado del día (solo admin via frontend)."""
+    FEATURED_PICK_FILE.write_text(
+        json.dumps(data.model_dump(), ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return data
+
+
+# ---------------------------------------------------------------------------
+# Record histórico honesto (predecir_v2 para los últimos N partidos)
+# ---------------------------------------------------------------------------
+
+def _generar_record_background(n_partidos: int) -> None:
+    """Corre predecir_partido_v2 para los últimos n_partidos del dataset."""
+    global _record_status
+    _record_status = {"status": "running", "progreso": 0, "total": n_partidos}
+    try:
+        df = pd.read_excel(DATASET)
+        if "Fecha" in df.columns:
+            df["_f"] = pd.to_datetime(df["Fecha"], errors="coerce")
+            df = df.sort_values("_f").drop(columns=["_f"]).reset_index(drop=True)
+
+        ultimos = df.tail(n_partidos).reset_index(drop=True)
+        resultados = []
+
+        for i, (_, row) in enumerate(ultimos.iterrows()):
+            e1   = str(row["Equipo1"])
+            e2   = str(row["Equipo2"])
+            fecha = str(row.get("Fecha", ""))[:10] if pd.notna(row.get("Fecha")) else None
+            fase  = str(row.get("Fase", "Liga"))
+
+            try:
+                pred = predecir_partido_v2(
+                    e1, e2, fecha=fecha, fase=fase, n_runs=10
+                )
+                g1r = int(row["EQUIPO1_GOLES"]) if pd.notna(row.get("EQUIPO1_GOLES")) else None
+                g2r = int(row["EQUIPO2_GOLES"]) if pd.notna(row.get("EQUIPO2_GOLES")) else None
+                resultado_real = pred.get("resultado_real") or (
+                    "Win" if (g1r is not None and g2r is not None and g1r > g2r) else
+                    "Loss" if (g1r is not None and g2r is not None and g1r < g2r) else
+                    "Draw" if (g1r is not None and g2r is not None) else None
+                )
+                resultados.append({
+                    "equipo1":        e1,
+                    "equipo2":        e2,
+                    "fecha":          fecha or "—",
+                    "fase":           fase,
+                    "goles_real":     f"{g1r}–{g2r}" if g1r is not None else "—",
+                    "resultado_real": resultado_real,
+                    "consenso":       pred["consenso"],
+                    "modelos":        pred.get("modelos", []),
+                    "acierto":        pred.get("acierto_consenso"),
+                })
+            except Exception as exc:
+                resultados.append({
+                    "equipo1": e1, "equipo2": e2, "fecha": fecha or "—",
+                    "error": str(exc),
+                })
+
+            _record_status["progreso"] = i + 1
+
+        RECORD_HISTORICO_FILE.write_text(
+            json.dumps(resultados, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        _record_status["status"] = "done"
+    except Exception as exc:
+        _record_status["status"] = f"error:{exc}"
+
+
+@app.get("/api/admin/record-status")
+def record_status_endpoint():
+    return _record_status
+
+
+@app.get("/api/record")
+def record_publico(session: Session = Depends(get_session)):
+    """Record histórico: primero el archivo v2 (honesto), luego el test split."""
+    if RECORD_HISTORICO_FILE.exists():
+        data = json.loads(RECORD_HISTORICO_FILE.read_text(encoding="utf-8"))
+        return {"tipo": "v2_honesto", "predicciones": data}
+    # Fallback: test split del último entrenamiento
+    evals = session.exec(select(Evaluacion).where(Evaluacion.activo == True)).all()
+    if not evals:
+        return {"tipo": "sin_datos", "predicciones": []}
+    ev = max(evals, key=lambda e: e.id)
+    results = _get_or_run_pipeline(ev.id, session)
+    pred_df = results.get("predictions")
+    if pred_df is None:
+        return {"tipo": "sin_datos", "predicciones": []}
+    return {"tipo": "test_split", "predicciones": json.loads(pred_df.to_json(orient="records"))}
 
 
 # ---------------------------------------------------------------------------

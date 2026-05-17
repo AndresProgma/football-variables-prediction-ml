@@ -23,6 +23,7 @@ Librerías principales:
 
 import pandas as pd
 import numpy as np
+from collections import Counter
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.linear_model import LogisticRegression
@@ -956,13 +957,13 @@ def main(filepath, test_size=0.2, random_state=42):
     print(f"   ✓ Features: {X.shape[1]} | Partidos: {y.shape[0]}")
     print(f"   Distribución clases: {dict(zip(class_labels, [int((y==i).sum()) for i in range(len(class_labels))]))}")
 
-    # 10. Split CRONOLÓGICO: primeros 80 % entrenan, últimos 20 % validan.
-    # El dataset ya viene ordenado por fecha desde main(), así que slice directo.
+    # 10. Split CRONOLÓGICO: últimos 35 partidos como test, el resto entrena.
     n = len(X)
-    n_train = int(n * (1 - test_size))
+    N_TEST = 35
+    n_train = max(n - N_TEST, int(n * 0.5))   # mínimo 50 % para entrenamiento
     X_train, X_test = X.iloc[:n_train], X.iloc[n_train:]
     y_train, y_test = y.iloc[:n_train], y.iloc[n_train:]
-    print(f"\n🔀 Split cronológico: {len(X_train)} train (antiguos) — {len(X_test)} test (recientes)")
+    print(f"\n🔀 Split cronológico: {len(X_train)} train (antiguos) — {len(X_test)} test (últimos {len(X_test)} partidos)")
 
     # 11. Cross-validation antes de entrenar el modelo final
     cv_results = cross_validate_models(X, y)
@@ -983,8 +984,17 @@ def main(filepath, test_size=0.2, random_state=42):
     idx_test = X_test.index
     predictions_df = df.loc[idx_test, ['Equipo1', 'Equipo2']].copy()
     predictions_df['Resultado_Real'] = df.loc[idx_test, 'Resultado_E1'].values
+    cl = list(class_labels)  # ['Draw', 'Loss', 'Win']
+    win_i  = cl.index('Win')  if 'Win'  in cl else None
+    draw_i = cl.index('Draw') if 'Draw' in cl else None
+    loss_i = cl.index('Loss') if 'Loss' in cl else None
     for model_name, y_pred in predictions.items():
         predictions_df[model_name] = le_dict['Resultado_E1'].inverse_transform(y_pred)
+        if model_name in models:
+            probas = models[model_name].predict_proba(X_test)
+            if win_i  is not None: predictions_df[f'{model_name}__win']  = [round(float(p[win_i])*100,  1) for p in probas]
+            if draw_i is not None: predictions_df[f'{model_name}__draw'] = [round(float(p[draw_i])*100, 1) for p in probas]
+            if loss_i is not None: predictions_df[f'{model_name}__loss'] = [round(float(p[loss_i])*100, 1) for p in probas]
 
     output_dir = r"C:\Users\fehgb\OneDrive\Desktop\prediccion futybol"
     results_df.to_csv(rf"{output_dir}\model_results.csv", index=False)
@@ -999,27 +1009,7 @@ def main(filepath, test_size=0.2, random_state=42):
     print("✨ PIPELINE COMPLETADO")
     print("="*60 + "\n")
 
-    # Feature importance del mejor modelo basado en RF (más interpretable que XGB)
-    feature_importance = []
-    try:
-        rf_pipeline = models.get('Random Forest')
-        # CalibratedClassifierCV envuelve el Pipeline — hay que bajar con .estimator
-        if hasattr(rf_pipeline, 'estimator'):
-            rf_pipeline = rf_pipeline.estimator
-        if rf_pipeline is not None:
-            sk_step = rf_pipeline.named_steps.get('sk')
-            rf_step = rf_pipeline.named_steps.get('rf')
-            if sk_step is not None and rf_step is not None:
-                mask = sk_step.get_support()
-                selected_features = [c for c, keep in zip(X.columns, mask) if keep]
-                importances = rf_step.feature_importances_
-                feature_importance = sorted(
-                    [{'feature': f, 'importance': float(imp)}
-                     for f, imp in zip(selected_features, importances)],
-                    key=lambda x: -x['importance'],
-                )
-    except Exception as e:
-        print(f"   ⚠️  No se pudo calcular feature importance: {e}")
+    feature_importance = []  # se calcula después de full_models
 
     # Entrenar N_PRED_SEEDS semillas por clasificador/regresor sobre el dataset
     # completo. predecir_partido() promedia sus predicciones (ensemble por
@@ -1031,6 +1021,31 @@ def main(filepath, test_size=0.2, random_state=42):
         for name, clf in build_classifiers(seed=seed, n_features=len(X.columns)).items():
             clf.fit(X, y)
             full_models.setdefault(name, []).append(clf)
+
+    # Feature importance: usar el primer RF ya fiteado sobre el dataset completo
+    try:
+        rf_fitted = full_models.get('Random Forest', [None])[0]
+        if rf_fitted is not None:
+            # Unwrap CalibratedClassifierCV → Pipeline fiteado del primer fold
+            if hasattr(rf_fitted, 'calibrated_classifiers_') and rf_fitted.calibrated_classifiers_:
+                inner = rf_fitted.calibrated_classifiers_[0].estimator
+            elif hasattr(rf_fitted, 'estimator'):
+                inner = rf_fitted.estimator
+            else:
+                inner = rf_fitted
+            sk_step = inner.named_steps.get('sk')
+            rf_step = inner.named_steps.get('rf')
+            if sk_step is not None and rf_step is not None:
+                mask = sk_step.get_support()
+                selected_features = [c for c, keep in zip(X.columns, mask) if keep]
+                importances = rf_step.feature_importances_
+                feature_importance = sorted(
+                    [{'feature': f, 'importance': float(imp)}
+                     for f, imp in zip(selected_features, importances)],
+                    key=lambda x: -x['importance'],
+                )
+    except Exception as e:
+        print(f"   ⚠️  No se pudo calcular feature importance: {e}")
 
     y1_full = df_model['EQUIPO1_GOLES']
     y2_full = df_model['EQUIPO2_GOLES']
@@ -1071,6 +1086,166 @@ def main(filepath, test_size=0.2, random_state=42):
 # ============================================================================
 # PREDICCIÓN DE PARTIDO FUTURO  (ensemble de n_runs corridas)
 # ============================================================================
+def ultimos_partidos(df: pd.DataFrame, equipo: str, n: int = 3) -> list:
+    """Últimos N partidos del equipo (como local o visitante).
+    Usa el índice original del df para el orden cronológico — main() ya lo ordena por fecha."""
+    tiene_fecha = 'Fecha' in df.columns
+
+    cols_local = ['Equipo2', 'EQUIPO1_GOLES', 'EQUIPO2_GOLES']
+    cols_visit = ['Equipo1', 'EQUIPO2_GOLES', 'EQUIPO1_GOLES']
+    if tiene_fecha:
+        cols_local = ['Fecha'] + cols_local
+        cols_visit = ['Fecha'] + cols_visit
+
+    local = df[df['Equipo1'] == equipo][cols_local].copy()
+    local.columns = (['fecha'] if tiene_fecha else []) + ['rival', 'gf', 'gc']
+    local['es_local'] = True
+
+    visit = df[df['Equipo2'] == equipo][cols_visit].copy()
+    visit.columns = (['fecha'] if tiene_fecha else []) + ['rival', 'gf', 'gc']
+    visit['es_local'] = False
+
+    # Filtrar solo partidos con resultado (goles no nulos) y ordenar más reciente primero
+    todos = pd.concat([local, visit])
+    todos = todos[todos['gf'].notna() & todos['gc'].notna()]
+    todos = todos.sort_index(ascending=False)
+
+    result = []
+    for _, r in todos.head(n).iterrows():
+        gf = int(r['gf']) if pd.notna(r['gf']) else 0
+        gc = int(r['gc']) if pd.notna(r['gc']) else 0
+        fecha_val = r.get('fecha', None)
+        fecha_str = str(fecha_val)[:10] if fecha_val is not None and pd.notna(fecha_val) and str(fecha_val) not in ('nan', 'NaT', '—') else '—'
+        result.append({
+            'fecha':    fecha_str,
+            'rival':    str(r['rival']),
+            'gf': gf, 'gc': gc,
+            'res':      'W' if gf > gc else ('L' if gf < gc else 'D'),
+            'es_local': bool(r['es_local']),
+        })
+    return result
+
+
+def simular_mercados(g1_exp: float, g2_exp: float,
+                     prob_win: float, prob_draw: float, prob_loss: float,
+                     equipo1: str, equipo2: str,
+                     n_sims: int = 20_000) -> dict:
+    """
+    Simulación Monte Carlo (Poisson) para estimar probabilidades de todos
+    los mercados de apuestas comunes a partir de los goles esperados.
+
+    g1_exp / g2_exp: goles esperados promedio de los regresores.
+    prob_win/draw/loss: consenso del clasificador (más preciso para 1X2 y DNB).
+    """
+    rng = np.random.default_rng(42)
+
+    lam1 = max(g1_exp, 0.05)
+    lam2 = max(g2_exp, 0.05)
+
+    # Simular partido completo
+    g1 = rng.poisson(lam1, n_sims)
+    g2 = rng.poisson(lam2, n_sims)
+    total = g1 + g2
+    diff  = g1.astype(int) - g2.astype(int)
+
+    # Simular cada mitad (45 % / 55 % de los goles esperados)
+    g1_ht = rng.poisson(lam1 * 0.45, n_sims)
+    g2_ht = rng.poisson(lam2 * 0.45, n_sims)
+    g1_2h = rng.poisson(lam1 * 0.55, n_sims)
+    g2_2h = rng.poisson(lam2 * 0.55, n_sims)
+    diff_ht = g1_ht.astype(int) - g2_ht.astype(int)
+    diff_ft = (g1_ht + g1_2h).astype(int) - (g2_ht + g2_2h).astype(int)
+
+    def res(d): return np.where(d > 0, 'W', np.where(d < 0, 'L', 'D'))
+    ht_r = res(diff_ht)
+    ft_r = res(diff_ft)
+
+    # DNB: usar consenso del clasificador (más preciso que la simulación)
+    wd_sum = prob_win + prob_loss
+    dnb_e1 = prob_win  / wd_sum if wd_sum > 0 else 0.5
+    dnb_e2 = prob_loss / wd_sum if wd_sum > 0 else 0.5
+
+    # Resultado correcto top-10
+    score_counts = Counter(zip(g1.clip(0, 7).tolist(), g2.clip(0, 7).tolist()))
+    top_scores = sorted(
+        [{'score': f"{s1}-{s2}", 'g1': int(s1), 'g2': int(s2), 'prob': round(cnt / n_sims, 4)}
+         for (s1, s2), cnt in score_counts.items()],
+        key=lambda x: -x['prob']
+    )[:10]
+
+    # HT/FT
+    ht_ft = {}
+    for ht in ('W', 'D', 'L'):
+        for ft in ('W', 'D', 'L'):
+            ht_ft[f"{ht}/{ft}"] = round(float(((ht_r == ht) & (ft_r == ft)).mean()), 4)
+
+    return {
+        # Ambos marcan
+        'btts': {
+            'si':  round(float(((g1 > 0) & (g2 > 0)).mean()), 4),
+            'no':  round(float(((g1 == 0) | (g2 == 0)).mean()), 4),
+        },
+        # Resultado correcto (top 10)
+        'resultado_correcto': top_scores,
+        # Draw No Bet
+        'dnb': {
+            equipo1: round(dnb_e1, 4),
+            equipo2: round(dnb_e2, 4),
+        },
+        # Doble oportunidad
+        'doble_oportunidad': {
+            f"1X (gana {equipo1} o empate)": round(prob_win + prob_draw, 4),
+            f"X2 (empate o gana {equipo2})": round(prob_draw + prob_loss, 4),
+            f"12 (no empate)":               round(prob_win + prob_loss, 4),
+        },
+        # Goles de cada equipo
+        'goles_e1': {
+            'nombre': equipo1,
+            'xg': round(float(g1.mean()), 2),
+            'over_0_5': round(float((g1 > 0.5).mean()), 4),
+            'over_1_5': round(float((g1 > 1.5).mean()), 4),
+            'over_2_5': round(float((g1 > 2.5).mean()), 4),
+        },
+        'goles_e2': {
+            'nombre': equipo2,
+            'xg': round(float(g2.mean()), 2),
+            'over_0_5': round(float((g2 > 0.5).mean()), 4),
+            'over_1_5': round(float((g2 > 1.5).mean()), 4),
+            'over_2_5': round(float((g2 > 2.5).mean()), 4),
+        },
+        # Total de goles
+        'total_goles': {
+            'xg': round(float(total.mean()), 2),
+            'over_0_5': round(float((total > 0.5).mean()), 4),
+            'over_1_5': round(float((total > 1.5).mean()), 4),
+            'over_2_5': round(float((total > 2.5).mean()), 4),
+            'over_3_5': round(float((total > 3.5).mean()), 4),
+            'over_4_5': round(float((total > 4.5).mean()), 4),
+        },
+        # Hándicap europeo
+        'handicap': {
+            f'{equipo1} -1':   round(float((diff > 1).mean()), 4),
+            f'{equipo1} -1.5': round(float((diff > 1.5).mean()), 4),
+            f'{equipo1} -2':   round(float((diff > 2).mean()), 4),
+            f'+1 {equipo2}':   round(float((diff >= -1).mean()), 4),
+            f'+1.5 {equipo2}': round(float((diff >= -1).mean()), 4),
+            f'{equipo2} -1':   round(float((diff < -1).mean()), 4),
+            f'{equipo2} -1.5': round(float((diff < -1.5).mean()), 4),
+        },
+        # Victoria + ambos marcan
+        'win_btts': {
+            equipo1: round(float(((diff > 0) & (g1 > 0) & (g2 > 0)).mean()), 4),
+            equipo2: round(float(((diff < 0) & (g1 > 0) & (g2 > 0)).mean()), 4),
+        },
+        # Gol en ambas mitades
+        'gol_ambas_mitades': round(float(
+            ((g1_ht + g2_ht > 0) & (g1_2h + g2_2h > 0)).mean()
+        ), 4),
+        # Descanso / Tiempo reglamentario
+        'ht_ft': ht_ft,
+    }
+
+
 def predecir_partido(equipo1, equipo2, results, n_runs=20, fase='Liga'):
     """
     Predice el resultado entrenando cada modelo n_runs veces con distintas
@@ -1318,6 +1493,16 @@ def predecir_partido(equipo1, equipo2, results, n_runs=20, fase='Liga'):
             print(f"  ⚠️  '{e}' no está en el historial — se usaron promedios globales")
             desconocidos.append(e)
 
+    # --- Mercados de apuestas (Monte Carlo Poisson) ---
+    # Usar el promedio de goles esperados de todos los regresores
+    g1_exp = np.mean([g['g1'] for g in goles_out]) if goles_out else 1.2
+    g2_exp = np.mean([g['g2'] for g in goles_out]) if goles_out else 1.0
+    mercados = simular_mercados(
+        g1_exp=float(g1_exp), g2_exp=float(g2_exp),
+        prob_win=w_c, prob_draw=d_c, prob_loss=l_c,
+        equipo1=equipo1, equipo2=equipo2,
+    )
+
     return {
         'equipo1': equipo1,
         'equipo2': equipo2,
@@ -1333,6 +1518,9 @@ def predecir_partido(equipo1, equipo2, results, n_runs=20, fase='Liga'):
         'modelos': modelos_out,
         'consenso': {'pred': pred_global, 'win': w_c, 'draw': d_c, 'loss': l_c},
         'goles': goles_out,
+        'mercados': mercados,
+        'ultimos_e1': ultimos_partidos(df, equipo1, n=3),
+        'ultimos_e2': ultimos_partidos(df, equipo2, n=3),
         'equipos_desconocidos': desconocidos,
     }
 

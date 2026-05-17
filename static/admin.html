@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>futbolzaIA &middot; Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        colors: {
+          brand:   { 400:'#00E5A0', 500:'#00B27D', 600:'#008A5E' },
+          surface: { 900:'#07090F', 800:'#0C1018', 700:'#131826', 600:'#1A2030' },
+        },
+        fontFamily: { sans:['Space Grotesk','system-ui'], mono:['JetBrains Mono','monospace'] }
+      }}
+    };
+  </script>
+  <style>
+    :root { --pos:#00E5A0; --amber:#FFB627; --red:#FF4D5E; --cyan:#34D8FF; --purple:#8B6DFF; --line:rgba(255,255,255,0.07); --lb:#2A3245; }
+    body { background: linear-gradient(135deg, #07090F 0%, #0C1018 100%); }
+    ::-webkit-scrollbar { width:5px; } ::-webkit-scrollbar-thumb { background:#2A3245; border-radius:3px; }
+    input:focus, select:focus { outline:none; border-color:var(--pos)!important; }
+    .card { background:#0C1018; border:1px solid #2A3245; border-radius:16px; padding:24px; }
+    .btn-pos { background:var(--pos); color:#00130C; border:none; padding:8px 16px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer; }
+    .btn-pos:hover { opacity:.88; }
+    .btn-outline { background:transparent; border:1px solid rgba(0,229,160,.3); color:var(--pos); padding:8px 16px; border-radius:8px; font-size:13px; cursor:pointer; font-family:inherit; }
+    .btn-outline:hover { background:rgba(0,229,160,.08); }
+    .btn-danger { background:transparent; border:1px solid rgba(255,77,94,.3); color:var(--red); padding:6px 12px; border-radius:8px; font-size:12px; cursor:pointer; font-family:inherit; }
+    .btn-danger:hover { background:rgba(255,77,94,.08); }
+    .tab { padding:6px 14px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:500; color:#97A0B5; border:1px solid transparent; transition:.15s; }
+    .tab.active { background:rgba(0,229,160,.1); border-color:rgba(0,229,160,.3); color:var(--pos); }
+    .tab:hover:not(.active) { color:#E6EAF2; }
+    .input { width:100%; background:#131826; border:1px solid #2A3245; border-radius:8px; padding:8px 12px; font-size:13px; color:#E6EAF2; font-family:'JetBrains Mono',monospace; }
+    .label { display:block; font-size:10px; color:#5A6478; text-transform:uppercase; letter-spacing:.1em; font-family:'JetBrains Mono',monospace; margin-bottom:5px; }
+  </style>
+</head>
+<body class="bg-surface-900 text-[#E6EAF2] min-h-screen antialiased font-sans">
+
+<!-- LOADING -->
+<div id="loading" class="hidden fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(7,9,15,.85);backdrop-filter:blur(6px)">
+  <div class="card flex items-center gap-3 px-6 py-4">
+    <div class="w-5 h-5 border-2 border-[var(--pos)] border-t-transparent rounded-full animate-spin"></div>
+    <span id="loading-text" class="text-sm font-medium">Procesando...</span>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header class="border-b border-[var(--line)] sticky top-0 z-10" style="background:rgba(7,9,15,.95);backdrop-filter:blur(8px)">
+  <div class="max-w-7xl mx-auto px-6 py-3 flex items-center gap-4">
+    <a href="/" class="flex items-center gap-2 no-underline">
+      <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
+        <path d="M11 1.5L20 6.5V15.5L11 20.5L2 15.5V6.5L11 1.5Z" stroke="#00E5A0" stroke-width="1.4" fill="rgba(0,229,160,0.08)"/>
+        <circle cx="11" cy="11" r="2.5" fill="#00E5A0"/>
+      </svg>
+      <span class="font-bold text-[16px] tracking-tight">futbolza<span style="color:var(--pos)">IA</span></span>
+    </a>
+    <span class="font-mono text-[10px] px-2 py-0.5 rounded font-bold" style="background:rgba(0,229,160,.1);border:1px solid rgba(0,229,160,.25);color:var(--pos)">ADMIN</span>
+
+    <!-- Tabs de navegación -->
+    <nav class="flex gap-1 ml-4">
+      <button class="tab active" onclick="showTab('pick')">&#x2605; Pick del D&#xED;a</button>
+      <button class="tab" onclick="showTab('predictor')">Predictor</button>
+      <button class="tab" onclick="showTab('dataset')">Dataset</button>
+      <button class="tab" onclick="showTab('track')">Track record</button>
+    </nav>
+
+    <div class="ml-auto flex items-center gap-3">
+      <span id="health" class="text-base text-[#5A6478]" title="API">&#x25CF;</span>
+      <span class="font-mono text-[11px] text-[#5A6478]">Eval <span id="eval-id-text">&#x2014;</span></span>
+      <a href="/" class="text-[11px] font-mono text-[#5A6478] hover:text-[#E6EAF2] transition-colors">&#x2190; Ver sitio</a>
+      <button onclick="doLogout()" class="text-[11px] font-mono text-[#5A6478] hover:text-[var(--red)] transition-colors">Salir</button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-6 py-8 space-y-6">
+
+  <!-- ════ TAB: PICK DEL DÍA ════ -->
+  <div id="tab-pick">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-xl font-semibold">Pick del D&#xED;a</h1>
+        <p class="text-sm text-[#97A0B5] mt-0.5">Elige dos equipos, el modelo corre y se publica autom&#xE1;ticamente.</p>
+      </div>
+      <button id="btn-eliminar-pick" onclick="eliminarPick()" class="btn-danger hidden">&#x2715; Eliminar pick actual</button>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- Formulario -->
+      <div class="card space-y-4">
+        <h2 class="text-sm font-semibold">Configurar nuevo pick</h2>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label">Equipo local</label>
+            <select id="pk-e1" class="input"></select>
+          </div>
+          <div>
+            <label class="label">Equipo visitante</label>
+            <select id="pk-e2" class="input"></select>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="label">Hora</label>
+            <input id="pk-hora" type="text" value="21:00" class="input"/>
+          </div>
+          <div>
+            <label class="label">Fase</label>
+            <select id="pk-fase" class="input">
+              <option>Liga</option><option>Octavos</option><option selected>Cuartos</option>
+              <option>Semifinal</option><option>Final</option>
+            </select>
+          </div>
+          <div>
+            <label class="label">n_runs</label>
+            <input id="pk-nruns" type="number" min="5" max="50" value="20" class="input"/>
+          </div>
+        </div>
+
+        <div id="pk-estado" class="hidden rounded-lg p-3 border border-[var(--lb)]" style="background:#131826">
+          <div id="pk-spinner" class="flex items-center gap-2">
+            <div class="w-4 h-4 border-2 border-[var(--pos)] border-t-transparent rounded-full animate-spin"></div>
+            <span class="text-xs text-[#97A0B5]">Corriendo predicci&#xF3;n...</span>
+          </div>
+          <p id="pk-msg" class="hidden text-xs font-mono"></p>
+        </div>
+
+        <button onclick="guardarPick()" class="btn-pos w-full py-2.5">
+          Correr predicci&#xF3;n y publicar &#x2192;
+        </button>
+      </div>
+
+      <!-- Preview del pick actual -->
+      <div class="card">
+        <h2 class="text-sm font-semibold mb-4">Pick publicado actualmente</h2>
+        <div id="pick-preview">
+          <p class="text-sm text-[#5A6478]">No hay pick configurado.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ════ TAB: PREDICTOR ════ -->
+  <div id="tab-predictor" class="hidden">
+    <h1 class="text-xl font-semibold mb-1">Predictor interactivo</h1>
+    <p class="text-sm text-[#97A0B5] mb-6">Predice cualquier partido. Los resultados no se publican autom&#xE1;ticamente.</p>
+
+    <div class="card">
+      <form id="form-predecir" class="grid grid-cols-1 md:grid-cols-5 gap-3 mb-6">
+        <div class="md:col-span-2">
+          <label class="label">Equipo 1 (local)</label>
+          <select id="sel-e1" class="input"></select>
+        </div>
+        <div class="md:col-span-2">
+          <label class="label">Equipo 2 (visitante)</label>
+          <select id="sel-e2" class="input"></select>
+        </div>
+        <div>
+          <label class="label">Fase</label>
+          <select id="sel-fase" class="input">
+            <option value="Liga">Liga</option><option value="Octavos">Octavos</option>
+            <option value="Cuartos">Cuartos</option><option value="Semifinal">Semifinal</option>
+            <option value="Final">Final (neutral)</option>
+          </select>
+        </div>
+        <div class="md:col-span-5 flex items-center gap-3">
+          <label class="text-[11px] text-[#5A6478] font-mono flex items-center gap-2">n_runs:
+            <input id="inp-runs" type="number" min="1" max="50" value="20" class="input w-16"/>
+          </label>
+          <button type="submit" class="btn-pos ml-auto px-6 py-2">Predecir &#x2192;</button>
+        </div>
+      </form>
+
+      <div id="resultado" class="hidden space-y-4">
+        <div class="grid grid-cols-3 items-center gap-4 rounded-xl p-5 border border-[var(--lb)]" style="background:rgba(19,24,38,.7)">
+          <div class="text-center">
+            <div id="r-e1" class="text-sm font-semibold"></div>
+            <div class="text-[10px] text-[#5A6478] font-mono uppercase mt-1">ELO</div>
+            <div id="r-elo1" class="text-2xl font-bold font-mono mt-0.5"></div>
+            <div id="r-forma1" class="text-[10px] text-[#5A6478] mt-2 font-mono"></div>
+          </div>
+          <div class="text-center">
+            <div id="r-consenso-pred" class="text-3xl font-bold tracking-tight"></div>
+            <div class="text-[10px] text-[#5A6478] font-mono uppercase mt-1">consenso</div>
+            <div id="r-diff" class="text-[10px] text-[#5A6478] mt-1 font-mono"></div>
+            <div id="r-h2h" class="text-[10px] text-[#5A6478] mt-1 font-mono"></div>
+            <button id="btn-guardar-track" class="mt-3 px-3 py-1 rounded-md text-[11px] font-mono btn-outline">&#x1F4CC; Guardar track</button>
+          </div>
+          <div class="text-center">
+            <div id="r-e2" class="text-sm font-semibold"></div>
+            <div class="text-[10px] text-[#5A6478] font-mono uppercase mt-1">ELO</div>
+            <div id="r-elo2" class="text-2xl font-bold font-mono mt-0.5"></div>
+            <div id="r-forma2" class="text-[10px] text-[#5A6478] mt-2 font-mono"></div>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <div class="lg:col-span-2 rounded-xl p-4 border border-[var(--lb)]" style="background:rgba(19,24,38,.7)">
+            <h3 class="text-sm font-semibold mb-3">Probabilidades consenso</h3>
+            <canvas id="chart-consenso"></canvas>
+          </div>
+          <div class="lg:col-span-3 rounded-xl p-4 border border-[var(--lb)]" style="background:rgba(19,24,38,.7)">
+            <h3 class="text-sm font-semibold mb-3">Por modelo</h3>
+            <table class="w-full text-sm">
+              <thead class="text-[10px] text-[#5A6478] uppercase border-b border-[var(--line)] font-mono">
+                <tr><th class="text-left py-2 px-2">Modelo</th><th class="text-center py-2 px-2">Pred</th><th class="text-right py-2 px-2">Win</th><th class="text-right py-2 px-2">Draw</th><th class="text-right py-2 px-2">Loss</th></tr>
+              </thead>
+              <tbody id="tbl-modelos"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="rounded-xl p-4 border border-[var(--lb)]" style="background:rgba(19,24,38,.7)">
+          <h3 class="text-sm font-semibold mb-3">Marcadores estimados</h3>
+          <div id="goles" class="grid grid-cols-2 gap-3"></div>
+        </div>
+        <!-- Mercados -->
+        <div id="mercados-wrap" class="hidden space-y-4">
+          <div class="flex items-center gap-3"><div class="h-px flex-1 bg-[var(--line)]"></div><span class="font-mono text-[10px] uppercase tracking-widest text-[#5A6478]">Mercados de apuestas</span><div class="h-px flex-1 bg-[var(--line)]"></div></div>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="rounded-xl p-4 border border-[var(--lb)] space-y-3" style="background:rgba(19,24,38,.7)">
+              <h4 class="text-xs font-semibold font-mono uppercase tracking-wider text-[#97A0B5]">Ambos marcan &middot; DNB &middot; Doble opc.</h4>
+              <div id="m-btts" class="space-y-1.5"></div>
+              <div class="h-px bg-[var(--line)]"></div>
+              <div id="m-dnb" class="space-y-1.5"></div>
+              <div class="h-px bg-[var(--line)]"></div>
+              <div id="m-doble" class="space-y-1.5"></div>
+            </div>
+            <div class="rounded-xl p-4 border border-[var(--lb)] space-y-3" style="background:rgba(19,24,38,.7)">
+              <h4 class="text-xs font-semibold font-mono uppercase tracking-wider text-[#97A0B5]">Total de goles</h4>
+              <div id="m-totalgoles" class="space-y-1.5"></div>
+              <div class="h-px bg-[var(--line)]"></div>
+              <h4 class="text-xs font-semibold font-mono uppercase tracking-wider text-[#97A0B5]">Goles por equipo</h4>
+              <div id="m-golesequipos" class="space-y-1.5"></div>
+            </div>
+            <div class="rounded-xl p-4 border border-[var(--lb)] space-y-3" style="background:rgba(19,24,38,.7)">
+              <h4 class="text-xs font-semibold font-mono uppercase tracking-wider text-[#97A0B5]">H&#xE1;ndicap</h4>
+              <div id="m-handicap" class="space-y-1.5"></div>
+              <div class="h-px bg-[var(--line)]"></div>
+              <h4 class="text-xs font-semibold font-mono uppercase tracking-wider text-[#97A0B5]">Victoria + ambos marcan</h4>
+              <div id="m-winbtts" class="space-y-1.5"></div>
+              <div class="h-px bg-[var(--line)]"></div>
+              <div id="m-ambas-mitades" class="space-y-1.5"></div>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="rounded-xl p-4 border border-[var(--lb)]" style="background:rgba(19,24,38,.7)">
+              <h4 class="text-xs font-semibold font-mono uppercase tracking-wider text-[#97A0B5] mb-3">Resultado correcto</h4>
+              <div id="m-scores" class="grid grid-cols-2 gap-1.5"></div>
+            </div>
+            <div class="rounded-xl p-4 border border-[var(--lb)]" style="background:rgba(19,24,38,.7)">
+              <h4 class="text-xs font-semibold font-mono uppercase tracking-wider text-[#97A0B5] mb-3">HT / FT</h4>
+              <div id="m-htft" class="grid grid-cols-3 gap-1.5"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ELO + Métricas -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+      <div class="card">
+        <h2 class="text-sm font-semibold mb-1">Ranking ELO</h2>
+        <div class="overflow-y-auto max-h-80 mt-3">
+          <table class="w-full text-sm">
+            <thead class="text-[10px] text-[#5A6478] uppercase font-mono sticky top-0 bg-surface-800">
+              <tr><th class="text-left py-2 px-2">#</th><th class="text-left py-2 px-2">Equipo</th><th class="text-right py-2 px-2">ELO</th><th class="py-2 px-2 w-1/3"></th></tr>
+            </thead>
+            <tbody id="tbl-elo"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <h2 class="text-sm font-semibold mb-1">M&#xE9;tricas CV</h2>
+        <div class="overflow-x-auto mt-3">
+          <table class="w-full text-sm">
+            <thead class="text-[10px] text-[#5A6478] uppercase border-b border-[var(--line)] font-mono">
+              <tr><th class="text-left py-2 px-2">Modelo</th><th class="text-right py-2 px-2">CV Acc</th><th class="text-right py-2 px-2">F1</th><th class="text-right py-2 px-2">&#xDA;lt. fold</th></tr>
+            </thead>
+            <tbody id="tbl-metricas"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feature importance -->
+    <div class="card mt-6">
+      <h2 class="text-sm font-semibold mb-1">Qu&#xE9; mira el modelo</h2>
+      <p class="text-[11px] text-[#97A0B5] mb-4 font-mono">Top 15 features &middot; Random Forest</p>
+      <div id="feature-importance" class="space-y-2"></div>
+    </div>
+  </div>
+
+  <!-- ════ TAB: DATASET ════ -->
+  <div id="tab-dataset" class="hidden">
+    <h1 class="text-xl font-semibold mb-1">Dataset y modelo</h1>
+    <p class="text-sm text-[#97A0B5] mb-6">Sincronizar datos y reentrenar el modelo.</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="card space-y-4">
+        <h2 class="text-sm font-semibold">Sincronizar dataset</h2>
+        <p class="text-[12px] text-[#97A0B5]">Actualiza la base de datos con los datos del archivo Excel. Agrega partidos nuevos sin borrar los existentes.</p>
+        <div id="kpis" class="grid grid-cols-2 gap-3"></div>
+        <button onclick="adminSync()" class="btn-outline w-full py-2">&#x21BB; Sincronizar ahora</button>
+      </div>
+      <div class="card space-y-4">
+        <h2 class="text-sm font-semibold">Reentrenar modelo</h2>
+        <p class="text-[12px] text-[#97A0B5]">Entrena todos los modelos desde cero con el dataset actual. Tarda 1&#x2013;2 minutos.</p>
+        <span class="font-mono text-[11px] text-[#5A6478]">Evaluaci&#xF3;n activa: <span id="eval-id-text2">&#x2014;</span></span>
+        <button onclick="adminReentrenar()" class="btn-pos w-full py-2">&#x2699; Reentrenar modelo</button>
+      </div>
+    </div>
+
+    <!-- Historial -->
+    <div class="card mt-6">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-sm font-semibold">Historial de partidos</h2>
+          <p class="text-[11px] text-[#97A0B5]">Dataset completo</p>
+        </div>
+        <input id="filtro-historial" type="text" placeholder="Filtrar equipos..." class="input w-48"/>
+      </div>
+      <div class="overflow-y-auto max-h-96">
+        <table class="w-full text-sm">
+          <thead class="text-[10px] text-[#5A6478] uppercase sticky top-0 bg-surface-800 font-mono">
+            <tr><th class="text-left py-2 px-2">Fecha</th><th class="text-left py-2 px-2">Fase</th><th class="text-left py-2 px-2">Equipo 1</th><th class="text-center py-2 px-2">Marcador</th><th class="text-left py-2 px-2">Equipo 2</th></tr>
+          </thead>
+          <tbody id="tbl-historial"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ TAB: TRACK RECORD ════ -->
+  <div id="tab-track" class="hidden">
+    <h1 class="text-xl font-semibold mb-1">Track record</h1>
+    <p class="text-sm text-[#97A0B5] mb-6">Predicciones guardadas y resultados reales.</p>
+
+    <!-- Track público -->
+    <div class="card mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-sm font-semibold">Predicciones guardadas</h2>
+          <p class="text-[11px] text-[#97A0B5]">Auto-resueltas cuando llega el resultado real</p>
+        </div>
+        <div id="track-summary" class="text-right text-[11px] font-mono"></div>
+      </div>
+      <div id="track-kpis" class="grid grid-cols-3 gap-3 mb-4"></div>
+      <div class="overflow-y-auto max-h-64">
+        <table class="w-full text-sm">
+          <thead class="text-[10px] text-[#5A6478] uppercase sticky top-0 bg-surface-800 font-mono">
+            <tr><th class="text-left py-2 px-2">Fecha</th><th class="text-left py-2 px-2">Partido</th><th class="text-center py-2 px-2">Pred</th><th class="text-right py-2 px-2">Conf</th><th class="text-center py-2 px-2">Real</th><th class="text-center py-2 px-2">Estado</th></tr>
+          </thead>
+          <tbody id="tbl-track-publico"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- elementos ocultos para compatibilidad con app.js -->
+    <div class="hidden"><input id="res-id"/><select id="res-resultado"><option value="Win">Win</option><option value="Draw">Draw</option><option value="Loss">Loss</option></select><input id="res-g1"/><input id="res-g2"/><button id="btn-resolver"></button><p id="res-status"></p></div>
+
+    <!-- Test cronológico — mismo que página pública -->
+    <div class="card">
+      <div class="flex items-baseline gap-3 mb-2">
+        <h2 class="text-sm font-semibold">Record de partidos</h2>
+        <span id="admin-record-badge" class="font-mono text-[11px] text-[#5A6478]"></span>
+      </div>
+      <p class="text-[11px] text-[#97A0B5] mb-4">Predicci&#xF3;n de cada modelo vs lo que pas&#xF3; de verdad. Verde = acert&#xF3;, rojo = fall&#xF3;.</p>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="text-[10px] text-[#5A6478] uppercase border-b border-[var(--line)] font-mono tracking-widest">
+            <tr>
+              <th class="text-left py-2 px-2">Local</th>
+              <th class="text-left py-2 px-2">Visitante</th>
+              <th class="text-center py-2 px-2">Real</th>
+              <th class="text-center py-2 px-2">RF</th>
+              <th class="text-center py-2 px-2">GB</th>
+              <th class="text-center py-2 px-2">LR</th>
+              <th class="text-center py-2 px-2">SVM</th>
+              <th class="text-center py-2 px-2">XGB</th>
+              <th class="text-center py-2 px-2">KNN</th>
+            </tr>
+          </thead>
+          <tbody id="admin-record-body">
+            <tr><td colspan="9" class="text-center py-6 text-[#5A6478] text-xs">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>window.FZ_SKIP_INIT = true;</script>
+<script src="/static/js/api.js"></script>
+<script src="/static/js/app.js"></script>
+<script>
+// ═══ AUTH CHECK ═══════════════════════════════════════════
+const FZ_CREDS = { admin: { user:'admin', pass:'fz2026!' }, pro:{ pass:'pro2026' } };
+if (localStorage.getItem('fz_role') !== 'admin') { location.href = '/'; }
+
+function doLogout() { localStorage.removeItem('fz_role'); location.href = '/'; }
+
+// ═══ TABS ═════════════════════════════════════════════════
+function showTab(name) {
+  ['pick','predictor','dataset','track'].forEach(t => {
+    document.getElementById(`tab-${t}`).classList.toggle('hidden', t !== name);
+  });
+  document.querySelectorAll('.tab').forEach((el, i) => {
+    el.classList.toggle('active', ['pick','predictor','dataset','track'][i] === name);
+  });
+}
+
+// ═══ PICK DEL DÍA ════════════════════════════════════════
+async function guardarPick() {
+  const e1 = document.getElementById('pk-e1').value;
+  const e2 = document.getElementById('pk-e2').value;
+  if (!e1 || !e2 || e1 === e2) { alert('Elige dos equipos distintos'); return; }
+
+  const hora  = document.getElementById('pk-hora').value || '21:00';
+  const fase  = document.getElementById('pk-fase').value;
+  const nRuns = parseInt(document.getElementById('pk-nruns').value) || 20;
+
+  const estadoEl = document.getElementById('pk-estado');
+  const spinnerEl = document.getElementById('pk-spinner');
+  const msgEl = document.getElementById('pk-msg');
+  estadoEl.classList.remove('hidden');
+  spinnerEl.classList.remove('hidden');
+  msgEl.classList.add('hidden');
+
+  try {
+    const pred = await api.predecir({ equipo1:e1, equipo2:e2, fase, n_runs:nRuns, evaluacion_id: state?.evaluacionId||null });
+
+    // Auto-valores
+    const m = pred.mercados;
+    const fav = m && m.dnb[e1] >= m.dnb[e2] ? e1 : e2;
+    const valores = m ? [
+      { nombre:'Ambos marcan · sí', descripcion:'Ambos equipos anotan', porcentaje:Math.round(m.btts.si*100) },
+      { nombre:'Más de 2.5 goles',  descripcion:`xG total: ${m.total_goles.xg.toFixed(2)}`, porcentaje:Math.round(m.total_goles.over_2_5*100) },
+      { nombre:`DNB · ${fav.split(' ')[0]}`, descripcion:'Sin empate', porcentaje:Math.round(m.dnb[fav]*100) },
+    ] : [];
+
+    // Métricas de accuracy
+    let accMap = {};
+    try {
+      const met = await api.metricas(state?.evaluacionId);
+      for (const r of met.cv||[]) if (r['CV Mean']!=null) accMap[r.Model] = Math.round(r['CV Mean']*100);
+    } catch(_) {}
+    const modelos = (pred.modelos||[]).map(m2 => ({...m2, accuracy: accMap[m2.modelo]??null}));
+
+    const body = {
+      equipo1:e1, equipo2:e2, hora, fase,
+      prob_win:pred.consenso.win, prob_draw:pred.consenso.draw, prob_loss:pred.consenso.loss,
+      valores, mercados:pred.mercados||null, modelos,
+      goles: pred.goles||[],
+      ultimos_e1:pred.ultimos_e1||[], ultimos_e2:pred.ultimos_e2||[],
+    };
+
+    const res = await fetch(`${API_BASE}/api/admin/featured-pick`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error(await res.text());
+
+    spinnerEl.classList.add('hidden');
+    msgEl.textContent = '✓ Pick publicado correctamente.';
+    msgEl.style.color = 'var(--pos)';
+    msgEl.classList.remove('hidden');
+    renderPickPreview(body);
+    document.getElementById('btn-eliminar-pick').classList.remove('hidden');
+
+  } catch(err) {
+    spinnerEl.classList.add('hidden');
+    msgEl.textContent = `Error: ${err.message}`;
+    msgEl.style.color = 'var(--red)';
+    msgEl.classList.remove('hidden');
+  }
+}
+
+function renderPickPreview(pick) {
+  if (!pick?.equipo1) { document.getElementById('pick-preview').innerHTML='<p class="text-sm text-[#5A6478]">No hay pick configurado.</p>'; return; }
+  const win  = Math.round((pick.prob_win||0)*100);
+  const draw = Math.round((pick.prob_draw||0)*100);
+  const loss = Math.round((pick.prob_loss||0)*100);
+  const col = { Win:'var(--pos)', Draw:'var(--amber)', Loss:'var(--red)' };
+  document.getElementById('pick-preview').innerHTML = `
+    <div class="flex items-center justify-between mb-4">
+      <span class="text-base font-semibold">${pick.equipo1} <span class="text-[#5A6478] text-sm">vs</span> ${pick.equipo2}</span>
+      <span class="font-mono text-[11px] text-[#5A6478]">${pick.hora} · ${pick.fase}</span>
+    </div>
+    <div class="flex gap-4 mb-4">
+      <div><div class="font-mono text-2xl font-bold" style="color:var(--pos)">${win}%</div><div class="text-[10px] text-[#5A6478] font-mono uppercase">Win</div></div>
+      <div><div class="font-mono text-2xl font-bold" style="color:var(--amber)">${draw}%</div><div class="text-[10px] text-[#5A6478] font-mono uppercase">Draw</div></div>
+      <div><div class="font-mono text-2xl font-bold" style="color:var(--red)">${loss}%</div><div class="text-[10px] text-[#5A6478] font-mono uppercase">Loss</div></div>
+    </div>
+    ${(pick.valores||[]).map((v,i) => `<div class="flex justify-between text-xs py-1 border-b border-[var(--line)]"><span class="text-[#97A0B5]">Valor ${i+1}: ${v.nombre}</span><span class="font-mono font-bold" style="color:var(--pos)">${v.porcentaje}%</span></div>`).join('')}`;
+}
+
+async function eliminarPick() {
+  if (!confirm('¿Eliminar el pick actual?')) return;
+  await fetch(`${API_BASE}/api/admin/featured-pick`, { method:'DELETE' });
+  document.getElementById('pick-preview').innerHTML = '<p class="text-sm text-[#5A6478]">No hay pick configurado.</p>';
+  document.getElementById('btn-eliminar-pick').classList.add('hidden');
+  document.getElementById('pk-msg').classList.add('hidden');
+  document.getElementById('pk-estado').classList.add('hidden');
+}
+
+// ═══ ACCIONES ADMIN ══════════════════════════════════════
+async function adminSync() {
+  try {
+    setLoading(true, 'Sincronizando dataset...');
+    const res = await fetch(`${API_BASE}/api/sync`, { method:'POST' });
+    const d = await res.json();
+    alert(`Sync completo: ${d.nuevos_agregados} nuevos. Total: ${d.total_partidos}`);
+    await cargarPartidos();
+    renderKpis();
+  } catch(err) { alert(`Error: ${err.message}`); }
+  finally { setLoading(false); }
+}
+
+async function adminReentrenar() {
+  if (!confirm('¿Reentrenar el modelo desde cero? (1-2 min)')) return;
+  try {
+    setLoading(true, 'Iniciando reentrenamiento...');
+    const ev = await api.crearEvaluacion();
+    if (state) state.evaluacionId = ev.id;
+    document.getElementById('eval-id-text').textContent = `#${ev.id}`;
+    document.getElementById('eval-id-text2').textContent = `#${ev.id}`;
+    await esperarEntrenamiento(ev.id);
+    await Promise.all([cargarMetricas(), cargarRanking(), cargarAdminRecord(), cargarFeatureImportance()]);
+    alert('Modelo reentrenado correctamente.');
+  } catch(err) { alert(`Error: ${err.message}`); }
+  finally { setLoading(false); }
+}
+
+// ═══ RECORD (mismo que página pública) ═══════════════════
+async function cargarAdminRecord() {
+  const tbody = document.getElementById('admin-record-body');
+  const badge = document.getElementById('admin-record-badge');
+  try {
+    const data = await fetch(`${API_BASE}/api/record`).then(r => r.json());
+    const rows = data.predicciones || [];
+    const tipo = data.tipo || 'sin_datos';
+
+    if (badge) {
+      badge.textContent = tipo === 'v2_honesto'
+        ? `${rows.length} partidos · predicción honesta`
+        : `${rows.length} partidos · test split`;
+      badge.style.color = tipo === 'v2_honesto' ? 'var(--pos)' : 'var(--amber)';
+    }
+
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-[#5A6478] text-xs">Sin datos — regenerá el record desde el tab Dataset.</td></tr>`;
+      return;
+    }
+
+    const colC = { Win:'#00E5A0', Draw:'#FFB627', Loss:'#FF4D5E' };
+
+    if (tipo === 'v2_honesto') {
+      const MODS = ['Random Forest','Gradient Boosting','Logistic Regression','SVM','XGBoost','KNN'];
+      tbody.innerHTML = rows.map(r => {
+        if (r.error) return `<tr><td colspan="9" class="py-1 px-2 text-xs text-[#5A6478]">${r.equipo1} vs ${r.equipo2} — ${r.error}</td></tr>`;
+        const real = r.resultado_real;
+        const cReal = colC[real] || '#E6EAF2';
+        const modMap = {};
+        (r.modelos || []).forEach(m => { modMap[m.modelo] = m; });
+        const mCells = MODS.map(name => {
+          const m = modMap[name];
+          if (!m) return `<td class="py-2 px-2 text-center font-mono text-xs text-[#5A6478]">—</td>`;
+          const ok  = real && m.pred === real;
+          const col = ok ? '#00E5A0' : real ? '#FF4D5E' : '#97A0B5';
+          const pct = m.pred === 'Win' ? Math.round((m.win||0)*100) : m.pred === 'Draw' ? Math.round((m.draw||0)*100) : Math.round((m.loss||0)*100);
+          return `<td class="py-2 px-2 text-center font-mono text-xs leading-tight" style="color:${col}">${m.pred[0]}<br><span style="color:#5A6478;font-size:9px">${pct}%</span></td>`;
+        }).join('');
+        return `<tr class="border-b border-[var(--line)] hover:bg-surface-700/30">
+          <td class="py-2 px-2 text-sm">${r.equipo1}</td>
+          <td class="py-2 px-2 text-sm">${r.equipo2}</td>
+          <td class="py-2 px-2 text-center font-mono text-xs font-bold leading-tight" style="color:${cReal}">${real?.[0]||'—'}<br><span style="color:#5A6478;font-size:9px">${r.goles_real||''}</span></td>
+          ${mCells}
+        </tr>`;
+      }).join('');
+    } else {
+      // test_split format
+      tbody.innerHTML = rows.map(r => {
+        const real = r.Resultado_Real;
+        const cReal = colC[real] || '#E6EAF2';
+        const MODS = ['Random Forest','Gradient Boosting','Logistic Regression','SVM','XGBoost','KNN'];
+        const mCells = MODS.map(k => {
+          const pred = r[k];
+          if (!pred) return `<td class="py-2 px-2 text-center font-mono text-xs text-[#5A6478]">—</td>`;
+          const ok = pred === real;
+          const col = ok ? '#00E5A0' : '#FF4D5E';
+          const probKey = pred === 'Win' ? `${k}__win` : pred === 'Draw' ? `${k}__draw` : `${k}__loss`;
+          const pct = r[probKey] != null ? `<br><span style="color:#5A6478;font-size:9px">${r[probKey]}%</span>` : '';
+          return `<td class="py-2 px-2 text-center font-mono text-xs leading-tight" style="color:${col}">${pred[0]}${pct}</td>`;
+        }).join('');
+        return `<tr class="border-b border-[var(--line)] hover:bg-surface-700/30">
+          <td class="py-2 px-2 text-sm">${r.Equipo1||'—'}</td>
+          <td class="py-2 px-2 text-sm">${r.Equipo2||'—'}</td>
+          <td class="py-2 px-2 text-center font-mono text-xs font-bold" style="color:${cReal}">${real?.[0]||'—'}</td>
+          ${mCells}
+        </tr>`;
+      }).join('');
+    }
+  } catch(err) {
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-[#5A6478] text-xs">Error: ${err.message}</td></tr>`;
+  }
+}
+
+// ═══ BOOT ════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    setLoading(true, 'Cargando...');
+    await api.health();
+    document.getElementById('health').style.color = 'var(--pos)';
+
+    const evals = await api.evaluaciones();
+    if (evals.length > 0) {
+      state.evaluacionId = evals[evals.length-1].id;
+      const s = await api.estadoEvaluacion(state.evaluacionId);
+      if (s.status === 'training') { setLoading(true,'Completando entrenamiento...'); await esperarEntrenamiento(state.evaluacionId); }
+    } else {
+      setLoading(true,'Entrenando modelo por primera vez...');
+      const ev = await api.crearEvaluacion();
+      state.evaluacionId = ev.id;
+      await esperarEntrenamiento(state.evaluacionId);
+    }
+    document.getElementById('eval-id-text').textContent  = `#${state.evaluacionId}`;
+    document.getElementById('eval-id-text2').textContent = `#${state.evaluacionId}`;
+
+    await Promise.all([cargarEquipos(), cargarPartidos(), cargarMetricas(), cargarRanking(), cargarAdminRecord(), cargarTrackPublico(), cargarFeatureImportance()]);
+    renderKpis();
+
+    // Poblar selects del pick
+    const eq = document.getElementById('sel-e1');
+    if (eq && state.equipos.length) {
+      for (const id of ['pk-e1','pk-e2']) {
+        document.getElementById(id).innerHTML = state.equipos.map(e=>`<option>${e}</option>`).join('');
+      }
+      document.getElementById('pk-e2').value = state.equipos[1]||'';
+    }
+
+    // Cargar pick actual
+    try {
+      const pick = await fetch(`${API_BASE}/api/featured-pick`).then(r=>r.json());
+      renderPickPreview(pick);
+      if (pick?.equipo1) {
+        document.getElementById('btn-eliminar-pick').classList.remove('hidden');
+        document.getElementById('pk-e1').value = pick.equipo1;
+        document.getElementById('pk-e2').value = pick.equipo2;
+        document.getElementById('pk-hora').value = pick.hora||'21:00';
+        document.getElementById('pk-fase').value = pick.fase||'Cuartos';
+      }
+    } catch(_) {}
+
+  } catch(err) {
+    document.getElementById('health').style.color = 'var(--red)';
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+});
+
+// Elementos dummy para que app.js no rompa
+window.API_BASE_URL = window.API_BASE_URL || '';
+</script>
+</body>
+</html>

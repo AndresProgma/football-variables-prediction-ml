@@ -3,293 +3,1389 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>UCL Predictor · Dashboard</title>
+  <title>futbolzaIA &middot; UCL Predictor</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="/static/css/styles.css" />
+
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            brand:   { 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' },
-            surface: { 900: '#0b0f1a', 800: '#111727', 700: '#1a2236', 600: '#252e47' },
+            brand:   { 400:'#00E5A0', 500:'#00B27D', 600:'#008A5E' },
+            surface: { 900:'#07090F', 800:'#0C1018', 700:'#131826', 600:'#1A2030', 500:'#232A3E' },
+          },
+          fontFamily: {
+            sans: ['Space Grotesk','system-ui','sans-serif'],
+            mono: ['JetBrains Mono','SF Mono','Menlo','monospace'],
           }
         }
       }
     };
   </script>
-</head>
-<body class="bg-surface-900 text-slate-100 h-full antialiased">
-  <!-- TOP BAR -->
-  <header class="border-b border-surface-700 bg-surface-800/80 backdrop-blur sticky top-0 z-10">
-    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-lg font-bold">⚽</div>
-        <div>
-          <h1 class="text-lg font-semibold tracking-tight">UCL Predictor</h1>
-          <p class="text-xs text-slate-400">Champions League · Modelos de ML</p>
-        </div>
-      </div>
-      <div class="flex items-center gap-4 text-xs">
-        <span id="eval-pill" class="px-3 py-1.5 rounded-full bg-surface-700 text-slate-300 border border-surface-600">
-          Evaluación: <span id="eval-id-text" class="font-mono">—</span>
-        </span>
-        <button id="btn-sync" class="px-3 py-1.5 rounded-md bg-emerald-700 hover:bg-emerald-600 transition text-white text-xs font-medium">
-          Sync dataset
-        </button>
-        <button id="btn-evaluar" class="px-3 py-1.5 rounded-md bg-brand-600 hover:bg-brand-500 transition text-white text-xs font-medium">
-          Reentrenar
-        </button>
-        <span id="health" class="text-emerald-400">●</span>
-      </div>
-    </div>
-  </header>
 
-  <!-- LOADING OVERLAY -->
-  <div id="loading" class="hidden fixed inset-0 bg-surface-900/80 backdrop-blur z-50 flex items-center justify-center">
-    <div class="bg-surface-800 border border-surface-700 px-6 py-5 rounded-xl flex items-center gap-3">
-      <div class="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
-      <span id="loading-text" class="text-sm">Procesando...</span>
+  <style>
+    :root {
+      --pos:   #00E5A0;
+      --amber: #FFB627;
+      --red:   #FF4D5E;
+      --cyan:  #34D8FF;
+      --purple:#8B6DFF;
+      --line:  rgba(255,255,255,0.07);
+      --lb:    #2A3245;
+    }
+
+    /* Pitch background */
+    body {
+      background:
+        radial-gradient(ellipse 120% 80% at 50% -10%, rgba(7,9,15,0.5), rgba(7,9,15,0.97) 68%),
+        repeating-linear-gradient(90deg, #0E3B22 0, #0E3B22 120px, #0A2D1A 120px, #0A2D1A 240px);
+    }
+    body::before {
+      content:"";
+      position:fixed; inset:0; pointer-events:none; z-index:0;
+      background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 900' preserveAspectRatio='xMidYMid slice'><g fill='none' stroke='white' stroke-width='2' stroke-opacity='0.1'><rect x='40' y='60' width='1360' height='780'/><line x1='720' y1='60' x2='720' y2='840'/><circle cx='720' cy='450' r='130'/><rect x='40' y='245' width='200' height='410'/><rect x='40' y='340' width='80' height='220'/><path d='M 240 370 A 130 130 0 0 1 240 530'/><rect x='1200' y='245' width='200' height='410'/><rect x='1320' y='340' width='80' height='220'/><path d='M 1200 370 A 130 130 0 0 0 1200 530'/></g></svg>");
+      background-size:cover; background-position:center; opacity:.55;
+    }
+    body > * { position:relative; z-index:1; }
+
+    @keyframes pulse-live {
+      0%   { box-shadow:0 0 0 0 rgba(0,229,160,.5); }
+      70%  { box-shadow:0 0 0 8px rgba(0,229,160,0); }
+      100% { box-shadow:0 0 0 0 rgba(0,229,160,0); }
+    }
+    .dot-live {
+      display:inline-block; vertical-align:middle;
+      width:7px; height:7px; border-radius:50%;
+      background:var(--pos); animation:pulse-live 1.8s ease-out infinite;
+    }
+
+    ::-webkit-scrollbar { width:5px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:#2A3245; border-radius:3px; }
+
+    /* Glass */
+    .glass { backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+
+    /* Modal overlay */
+    .modal-bg { background:rgba(7,9,15,.85); backdrop-filter:blur(8px); }
+
+    /* Match card hover */
+    .match-card { transition:transform .15s, border-color .15s, box-shadow .15s; cursor:pointer; }
+    .match-card:hover { transform:translateY(-3px); border-color:var(--lb)!important; box-shadow:0 14px 36px rgba(0,0,0,.4); }
+
+    /* W/D/L bar */
+    .wdl-bar { display:flex; height:10px; border-radius:4px; overflow:hidden; }
+    .wdl-bar .w { background:var(--pos); }
+    .wdl-bar .d { background:var(--amber); }
+    .wdl-bar .l { background:var(--red); }
+
+    /* Featured pick card */
+    .pick-card {
+      background:linear-gradient(135deg,rgba(0,229,160,.04),rgba(12,16,24,1));
+      border:1px solid rgba(0,229,160,.22);
+      border-radius:16px; overflow:hidden; position:relative;
+    }
+    .pick-card::before {
+      content:""; position:absolute; left:0; right:0; top:0; height:1px;
+      background:linear-gradient(to right,transparent,var(--pos),transparent);
+    }
+
+    /* Valor row */
+    .valor-row {
+      display:grid; grid-template-columns:1fr auto;
+      align-items:center; padding:14px 16px;
+      background:var(--surface-700,#131826); border:1px solid var(--line);
+      border-radius:8px;
+    }
+    .valor-row.hot {
+      background:linear-gradient(135deg,rgba(0,229,160,.08),#131826);
+      border-color:rgba(0,229,160,.25);
+    }
+    .valor-row.hot .pct { color:var(--pos); }
+
+    /* Crest */
+    .crest {
+      width:52px; height:52px; border-radius:10px; flex-shrink:0;
+      display:grid; place-items:center;
+      font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px;
+      box-shadow:0 4px 16px rgba(0,0,0,.35);
+    }
+
+    /* Filter chips */
+    .chip {
+      padding:5px 12px; border-radius:999px; cursor:pointer;
+      background:transparent; border:1px solid var(--line);
+      color:#97A0B5; font-family:'JetBrains Mono',monospace; font-size:11px;
+      letter-spacing:.04em; transition:color .15s, border-color .15s, background .15s;
+    }
+    .chip.active { background:var(--pos); color:#00130C; border-color:var(--pos); font-weight:700; }
+    .chip:hover:not(.active) { color:#E6EAF2; border-color:#97A0B5; }
+
+    /* Auth badges */
+    .btn-admin { border-color:rgba(0,229,160,.45)!important; color:var(--pos)!important; }
+    .btn-pro   { border-color:rgba(139,109,255,.45)!important; color:var(--purple)!important; }
+
+    /* Admin bar */
+    #admin-bar { border-top:1px solid rgba(0,229,160,.18); background:rgba(0,229,160,.04); }
+
+    /* Grid for role-gated sections */
+    #kpis:not(.hidden)        { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; }
+    #elo-section:not(.hidden) { display:grid; grid-template-columns:1fr; gap:1.5rem; }
+    @media(min-width:768px)  { #kpis:not(.hidden) { grid-template-columns:repeat(4,1fr); } }
+    @media(min-width:1024px) { #elo-section:not(.hidden) { grid-template-columns:repeat(2,1fr); } }
+
+    input:focus, select:focus { outline:none; border-color:var(--pos)!important; }
+  </style>
+</head>
+<body class="bg-surface-900 text-[#E6EAF2] min-h-screen antialiased font-sans">
+
+<!-- ════════════════════ LOADING ════════════════════ -->
+<div id="loading" class="hidden fixed inset-0 modal-bg z-50 flex items-center justify-center">
+  <div class="bg-surface-800 border border-[var(--lb)] px-7 py-5 rounded-2xl flex items-center gap-3 shadow-2xl">
+    <div class="w-5 h-5 border-2 border-[var(--pos)] border-t-transparent rounded-full animate-spin"></div>
+    <span id="loading-text" class="text-sm font-medium">Procesando...</span>
+  </div>
+</div>
+
+<!-- ════════════════════ LOGIN MODAL ════════════════════ -->
+<div id="modal-login" class="hidden fixed inset-0 modal-bg z-40 flex items-center justify-center">
+  <div class="relative bg-surface-800 border border-[var(--lb)] rounded-2xl p-8 w-full max-w-sm shadow-2xl">
+    <button id="btn-modal-close" class="absolute top-4 right-4 text-[#5A6478] hover:text-[#E6EAF2] text-xl leading-none transition-colors">&#x2715;</button>
+    <div class="flex items-center gap-2 mb-6">
+      <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
+        <path d="M11 1.5L20 6.5V15.5L11 20.5L2 15.5V6.5L11 1.5Z" stroke="#00E5A0" stroke-width="1.4" fill="rgba(0,229,160,0.08)"/>
+        <circle cx="11" cy="11" r="2.5" fill="#00E5A0"/>
+      </svg>
+      <span class="font-bold text-base tracking-tight">futbolza<span style="color:var(--pos)">IA</span></span>
+    </div>
+    <h2 class="text-lg font-semibold mb-1">Acceder</h2>
+    <p class="text-sm text-[#97A0B5] mb-6">Ingresa tus credenciales para el dashboard completo.</p>
+    <form id="form-login" class="space-y-4">
+      <div>
+        <label class="block text-[10px] text-[#5A6478] mb-1.5 font-mono uppercase tracking-widest">Usuario</label>
+        <input id="inp-user" type="text" placeholder="tu usuario" autocomplete="username"
+          class="w-full bg-surface-700 border border-[var(--lb)] rounded-lg px-3 py-2.5 text-sm transition-colors"/>
+      </div>
+      <div>
+        <label class="block text-[10px] text-[#5A6478] mb-1.5 font-mono uppercase tracking-widest">Contrase&#xF1;a</label>
+        <input id="inp-pass" type="password" placeholder="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;" autocomplete="current-password"
+          class="w-full bg-surface-700 border border-[var(--lb)] rounded-lg px-3 py-2.5 text-sm transition-colors"/>
+      </div>
+      <p id="login-error" class="hidden text-xs text-[var(--red)] font-mono">Credenciales incorrectas.</p>
+      <button type="submit" class="w-full py-2.5 rounded-lg font-semibold text-sm hover:opacity-90 transition-opacity"
+        style="background:var(--pos);color:#00130C;">
+        Iniciar sesi&#xF3;n &#x2192;
+      </button>
+    </form>
+    <div class="mt-5 pt-4 border-t border-[var(--line)] text-center">
+      <p class="text-xs text-[#5A6478]">&#xBF;Quieres acceso Pro? Escr&#xED;beme por Telegram.</p>
     </div>
   </div>
+</div>
 
-  <main class="max-w-7xl mx-auto px-6 py-8 space-y-8">
+<!-- ════════════════════ ADMIN — SET PICK MODAL ════════════════════ -->
+<div id="modal-set-pick" class="hidden fixed inset-0 modal-bg z-40 flex items-center justify-center">
+  <div class="relative bg-surface-800 border rounded-2xl p-7 w-full max-w-sm shadow-2xl mx-4" style="border-color:rgba(0,229,160,.25)">
+    <button onclick="document.getElementById('modal-set-pick').classList.add('hidden')"
+      class="absolute top-4 right-4 text-[#5A6478] hover:text-[#E6EAF2] text-xl leading-none">&#x2715;</button>
 
-    <!-- KPI CARDS -->
-    <section id="kpis" class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <!-- llenado por JS -->
-    </section>
+    <div class="flex items-center gap-2 mb-2">
+      <span class="font-mono text-[10px] font-bold uppercase tracking-widest" style="color:var(--pos)">Admin</span>
+      <span class="text-base font-semibold">&#x2014; Pick del D&#xED;a</span>
+    </div>
+    <p class="text-xs text-[#5A6478] mb-5">Elige los dos equipos y el modelo corre solo.</p>
 
-    <!-- PREDICTOR -->
-    <section class="bg-surface-800 border border-surface-700 rounded-2xl p-6">
-      <div class="flex items-center justify-between mb-5">
-        <div>
-          <h2 class="text-base font-semibold">Predictor interactivo</h2>
-          <p class="text-xs text-slate-400">Selecciona dos equipos y obtén probabilidades de los 6 modelos + consenso</p>
-        </div>
+    <form id="form-set-pick" class="space-y-4">
+      <div>
+        <label class="block text-[10px] text-[#5A6478] mb-1.5 font-mono uppercase tracking-widest">Equipo local</label>
+        <select id="pk-e1" class="w-full bg-surface-700 border border-[var(--lb)] rounded-lg px-3 py-2.5 text-sm font-mono transition-colors"></select>
       </div>
-
-      <form id="form-predecir" class="grid grid-cols-1 md:grid-cols-5 gap-3 mb-6">
-        <div class="md:col-span-2">
-          <label class="block text-xs text-slate-400 mb-1">Equipo 1 (local)</label>
-          <select id="sel-e1" class="w-full bg-surface-900 border border-surface-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500"></select>
-        </div>
-        <div class="md:col-span-2">
-          <label class="block text-xs text-slate-400 mb-1">Equipo 2 (visitante)</label>
-          <select id="sel-e2" class="w-full bg-surface-900 border border-surface-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500"></select>
+      <div>
+        <label class="block text-[10px] text-[#5A6478] mb-1.5 font-mono uppercase tracking-widest">Equipo visitante</label>
+        <select id="pk-e2" class="w-full bg-surface-700 border border-[var(--lb)] rounded-lg px-3 py-2.5 text-sm font-mono transition-colors"></select>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[10px] text-[#5A6478] mb-1.5 font-mono uppercase tracking-widest">Hora</label>
+          <input id="pk-hora" type="text" value="21:00"
+            class="w-full bg-surface-700 border border-[var(--lb)] rounded-lg px-3 py-2.5 text-sm font-mono transition-colors"/>
         </div>
         <div>
-          <label class="block text-xs text-slate-400 mb-1">Fase</label>
-          <select id="sel-fase" class="w-full bg-surface-900 border border-surface-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500">
-            <option value="Liga">Liga</option>
-            <option value="Octavos">Octavos</option>
-            <option value="Cuartos">Cuartos</option>
-            <option value="Semifinal">Semifinal</option>
-            <option value="Final">Final (sede neutral)</option>
+          <label class="block text-[10px] text-[#5A6478] mb-1.5 font-mono uppercase tracking-widest">Fase</label>
+          <select id="pk-fase" class="w-full bg-surface-700 border border-[var(--lb)] rounded-lg px-3 py-2.5 text-sm font-mono transition-colors">
+            <option>Liga</option><option>Octavos</option><option selected>Cuartos</option>
+            <option>Semifinal</option><option>Final</option>
           </select>
         </div>
-        <div class="md:col-span-5 flex items-center gap-3">
-          <label class="text-xs text-slate-400 flex items-center gap-2">
-            n_runs:
-            <input id="inp-runs" type="number" min="1" max="50" value="20"
-                   class="w-16 bg-surface-900 border border-surface-600 rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-brand-500" />
-          </label>
-          <button type="submit" class="ml-auto px-5 py-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium transition">
-            Predecir
+      </div>
+      <div>
+        <label class="block text-[10px] text-[#5A6478] mb-1.5 font-mono uppercase tracking-widest">N&#xBA; de corridas del modelo (n_runs)</label>
+        <input id="pk-nruns" type="number" min="5" max="50" value="20"
+          class="w-full bg-surface-700 border border-[var(--lb)] rounded-lg px-3 py-2.5 text-sm font-mono transition-colors"/>
+        <p class="text-[10px] text-[#5A6478] mt-1 font-mono">M&#xE1;s corridas = m&#xE1;s preciso pero m&#xE1;s lento. 20 es suficiente.</p>
+      </div>
+
+      <!-- Estado -->
+      <div id="pk-status-wrap" class="hidden rounded-lg p-3 border border-[var(--line)] bg-surface-700/50">
+        <div id="pk-status-spinner" class="flex items-center gap-2">
+          <div class="w-4 h-4 border-2 border-[var(--pos)] border-t-transparent rounded-full animate-spin flex-shrink-0"></div>
+          <span class="text-xs text-[#97A0B5]">Corriendo predicci&#xF3;n...</span>
+        </div>
+        <p id="pk-status" class="hidden text-xs font-mono"></p>
+      </div>
+
+      <button type="submit" id="pk-submit-btn"
+        class="w-full py-2.5 rounded-lg font-semibold text-sm hover:opacity-90 transition-opacity"
+        style="background:var(--pos);color:#00130C;">
+        Correr predicci&#xF3;n y guardar &#x2192;
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- ════════════════════ MODAL PRO ════════════════════ -->
+<div id="modal-pro" class="hidden fixed inset-0 modal-bg z-40 flex items-center justify-center">
+  <div class="relative bg-surface-800 border rounded-2xl p-8 w-full max-w-md shadow-2xl mx-4" style="border-color:rgba(139,109,255,.3)">
+    <button onclick="document.getElementById('modal-pro').classList.add('hidden')"
+      class="absolute top-4 right-4 text-[#5A6478] hover:text-[#E6EAF2] text-xl leading-none">&#x2715;</button>
+
+    <!-- Badge -->
+    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-5 font-mono text-[11px] font-bold uppercase tracking-wider"
+      style="background:rgba(139,109,255,.12);border:1px solid rgba(139,109,255,.3);color:var(--purple)">
+      &#x2605; Plan Pro
+    </div>
+
+    <h2 class="text-2xl font-semibold tracking-tight mb-2">M&#xE1;s predicciones.<br>Mejor an&#xE1;lisis.</h2>
+    <p class="text-[#97A0B5] text-sm leading-relaxed mb-6">
+      Accede a an&#xE1;lisis completos de cada partido, mercados de apuestas detallados, m&#xE1;s partidos diarios y estad&#xED;sticas avanzadas del modelo.
+    </p>
+
+    <!-- Features -->
+    <div class="space-y-2.5 mb-7">
+      <div class="flex items-start gap-3">
+        <span style="color:var(--pos)" class="text-base flex-shrink-0">&#x2713;</span>
+        <span class="text-sm text-[#E6EAF2]">Dashboard completo con predictor interactivo para cualquier partido</span>
+      </div>
+      <div class="flex items-start gap-3">
+        <span style="color:var(--pos)" class="text-base flex-shrink-0">&#x2713;</span>
+        <span class="text-sm text-[#E6EAF2]">Todos los mercados de apuestas: BTTS, Over/Under, H&#xE1;ndicap, HT/FT, Resultado correcto</span>
+      </div>
+      <div class="flex items-start gap-3">
+        <span style="color:var(--pos)" class="text-base flex-shrink-0">&#x2713;</span>
+        <span class="text-sm text-[#E6EAF2]">M&#xE1;s predicciones diarias de todos los partidos UCL</span>
+      </div>
+      <div class="flex items-start gap-3">
+        <span style="color:var(--pos)" class="text-base flex-shrink-0">&#x2713;</span>
+        <span class="text-sm text-[#E6EAF2]">Ranking ELO de equipos, m&#xE9;tricas de los 6 modelos ML, historial completo</span>
+      </div>
+      <div class="flex items-start gap-3">
+        <span style="color:var(--pos)" class="text-base flex-shrink-0">&#x2713;</span>
+        <span class="text-sm text-[#E6EAF2]">Track record p&#xFA;blico auditado: cada predicci&#xF3;n documentada</span>
+      </div>
+    </div>
+
+    <!-- Price -->
+    <div class="flex items-baseline gap-2 mb-6">
+      <span class="text-4xl font-bold tracking-tight">$5</span>
+      <span class="text-[#97A0B5] text-sm">/ mes</span>
+    </div>
+
+    <!-- CTAs -->
+    <div class="space-y-3">
+      <a href="https://t.me/futbolzaIA" target="_blank"
+        class="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90"
+        style="background:var(--pos);color:#00130C;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.17 14.137l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.978.422z"/>
+        </svg>
+        Canal de Telegram &rarr; predicciones diarias
+      </a>
+      <a href="https://t.me/tuusuario" target="_blank"
+        class="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm border transition-colors"
+        style="border-color:rgba(139,109,255,.4);color:var(--purple);"
+        onmouseover="this.style.background='rgba(139,109,255,.08)'" onmouseout="this.style.background=''">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.17 14.137l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.978.422z"/>
+        </svg>
+        Escribime para pagar y activar acceso
+      </a>
+    </div>
+
+    <p class="text-[10px] text-[#5A6478] text-center mt-4 font-mono">
+      Acceso inmediato &middot; Pago por Telegram &middot; Sin suscripciones autom&#xE1;ticas
+    </p>
+  </div>
+</div>
+
+<!-- ════════════════════ TOP BAR ════════════════════ -->
+<header class="sticky top-0 z-10 border-b border-[var(--line)] glass" style="background:rgba(7,9,15,.9);">
+  <div class="max-w-7xl mx-auto px-5 py-3.5 flex items-center gap-5">
+    <!-- Logo -->
+    <a href="#" class="flex items-center gap-2 no-underline flex-shrink-0">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <path d="M11 1.5L20 6.5V15.5L11 20.5L2 15.5V6.5L11 1.5Z" stroke="#00E5A0" stroke-width="1.4" fill="rgba(0,229,160,0.08)"/>
+        <circle cx="11" cy="11" r="2.5" fill="#00E5A0"/>
+      </svg>
+      <span class="font-bold text-[17px] tracking-tight">futbolza<span style="color:var(--pos)">IA</span></span>
+    </a>
+    <!-- Nav -->
+    <nav class="hidden md:flex gap-5 text-[13.5px]">
+      <a href="#como-funciona" class="text-[#97A0B5] hover:text-[#E6EAF2] transition-colors">C&#xF3;mo funciona</a>
+    </nav>
+    <!-- Right -->
+    <div class="ml-auto flex items-center gap-2.5">
+      <span class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[11px]"
+        style="background:rgba(0,229,160,.06);border:1px solid rgba(0,229,160,.25);color:var(--pos)">
+        <span class="dot-live"></span> Datos en vivo
+      </span>
+      <span class="hidden sm:inline-flex px-2.5 py-1 rounded-full font-mono text-[11px] bg-surface-800 border border-[var(--lb)] text-[#97A0B5]">UCL &middot; 25/26</span>
+      <!-- Login button -->
+      <button id="btn-login" onclick="toggleLoginModal()"
+        class="px-3.5 py-1.5 rounded-lg border border-[var(--lb)] text-[13px] font-medium hover:border-[var(--pos)] hover:text-[var(--pos)] transition-colors">
+        Iniciar sesi&#xF3;n
+      </button>
+      <button id="btn-logout" onclick="doLogout()"
+        class="hidden text-[11px] font-mono text-[#5A6478] hover:text-[var(--red)] transition-colors">
+        salir
+      </button>
+    </div>
+</div>
+</header>
+
+<!-- ════════════════════ HERO ════════════════════ -->
+<section style="padding:56px 40px 32px;border-bottom:1px solid var(--line);background:radial-gradient(1200px 500px at 80% 0%,rgba(0,229,160,.08),transparent 60%),radial-gradient(600px 300px at 0% 100%,rgba(52,216,255,.04),transparent 60%),rgba(7,9,15,.6);position:relative;overflow:hidden;">
+  <div class="max-w-7xl mx-auto relative z-10">
+    <div id="hero-date" class="font-mono text-[11px] tracking-widest uppercase mb-3" style="color:var(--pos)"></div>
+    <h1 class="text-4xl md:text-[50px] font-semibold tracking-tight leading-[1.08] mb-4">
+      Hoy juegan <span id="hero-count" style="color:var(--pos)">&#x2014;</span> partidos<br>
+      de Champions. <span class="text-[#97A0B5] font-normal">Esto es lo que dice el modelo.</span>
+    </h1>
+    <p class="text-[#97A0B5] text-base max-w-2xl leading-relaxed">
+      El partido que hoy encontramos con valor y que nuestra IA predice mejor es:
+    </p>
+  </div>
+  <!-- Deco ball -->
+  <div class="absolute -right-20 -top-20 w-96 h-96 opacity-[0.04] pointer-events-none">
+    <svg viewBox="0 0 200 200" fill="none"><circle cx="100" cy="100" r="90" stroke="#00E5A0" stroke-width="2"/>
+    <polygon points="100,40 121,55 113,80 87,80 79,55" stroke="#00E5A0" stroke-width="1.5" fill="none"/>
+    <polygon points="40,90 56,80 70,98 60,118 44,114" stroke="#00E5A0" stroke-width="1.5" fill="none"/>
+    <polygon points="160,90 144,80 130,98 140,118 156,114" stroke="#00E5A0" stroke-width="1.5" fill="none"/></svg>
+  </div>
+</section>
+
+<!-- ════════════════════ MAIN ════════════════════ -->
+<main class="max-w-7xl mx-auto px-5 py-8 space-y-10">
+
+  <!-- ★ PICK DEL DÍA -->
+  <section id="hoy">
+    <div class="font-mono text-[11px] tracking-widest uppercase mb-3 flex items-center gap-3" style="color:#5A6478">
+      <span style="color:var(--pos)">&#x2605;</span> PICK DEL D&#xCDA;A
+      <span class="flex-1 h-px bg-[var(--line)]"></span>
+    </div>
+
+    <!-- Estado vacío (no hay pick configurado) -->
+    <div id="pick-empty" class="hidden text-center py-12 text-[#5A6478] text-sm">
+      <div class="text-3xl mb-3">&#x26BD;</div>
+      <div>No hay un Pick del D&#xED;a configurado todav&#xED;a.</div>
+      <div id="pick-empty-admin" class="role-admin hidden mt-2">
+        <button onclick="document.getElementById('modal-set-pick').classList.remove('hidden')"
+          class="mt-3 px-4 py-2 rounded-lg text-sm font-medium border transition-colors"
+          style="border-color:rgba(0,229,160,.3);color:var(--pos);"
+          onmouseover="this.style.background='rgba(0,229,160,.1)'" onmouseout="this.style.background=''">
+          + Configurar Pick del D&#xED;a
+        </button>
+      </div>
+    </div>
+
+    <!-- Pick card -->
+    <div id="pick-card-wrap" class="hidden">
+      <!-- Barra admin sobre el pick -->
+      <div id="pick-admin-bar" class="role-admin hidden flex items-center justify-between mb-2 px-1">
+        <span class="font-mono text-[10px] text-[#5A6478] uppercase tracking-wider">Pick activo</span>
+        <div class="flex gap-2">
+          <button onclick="document.getElementById('modal-set-pick').classList.remove('hidden')"
+            class="px-3 py-1 rounded-md text-[11px] font-mono border transition-colors"
+            style="border-color:rgba(0,229,160,.3);color:var(--pos);"
+            onmouseover="this.style.background='rgba(0,229,160,.1)'" onmouseout="this.style.background=''">
+            &#x270E; Editar
+          </button>
+          <button onclick="eliminarPick()"
+            class="px-3 py-1 rounded-md text-[11px] font-mono border transition-colors"
+            style="border-color:rgba(255,77,94,.3);color:var(--red);"
+            onmouseover="this.style.background='rgba(255,77,94,.08)'" onmouseout="this.style.background=''">
+            &#x2715; Eliminar pick
           </button>
         </div>
-      </form>
+      </div>
+      <div class="pick-card grid md:grid-cols-[1.4fr_1fr]">
 
-      <!-- RESULTADO PREDICCIÓN -->
-      <div id="resultado" class="hidden space-y-5">
-        <!-- header con ELO -->
-        <div class="grid grid-cols-3 items-center gap-4 bg-surface-900/50 border border-surface-700 rounded-xl p-5">
-          <div class="text-center">
-            <div id="r-e1" class="text-base font-semibold"></div>
-            <div class="text-xs text-slate-400 mt-1">ELO</div>
-            <div id="r-elo1" class="text-2xl font-mono mt-0.5"></div>
-            <div id="r-forma1" class="text-xs text-slate-400 mt-2 font-mono"></div>
+        <!-- Left: match + probas -->
+        <div style="padding:36px 40px;border-right:1px solid var(--line);">
+          <div class="flex items-center gap-3 font-mono text-[12px] text-[#97A0B5] mb-6">
+            <span id="pk-hora-disp" class="text-[#E6EAF2] font-semibold text-[14px]">21:00</span>
+            <span style="color:#5A6478">&middot;</span>
+            <span id="pk-fase-disp">UCL</span>
           </div>
-          <div class="text-center">
-            <div id="r-consenso-pred" class="text-3xl font-bold tracking-tight"></div>
-            <div class="text-xs text-slate-400 mt-1">consenso</div>
-            <div id="r-diff" class="text-xs text-slate-500 mt-1 font-mono"></div>
-            <div id="r-h2h" class="text-xs text-slate-500 mt-2 font-mono"></div>
-            <button id="btn-guardar-track" class="mt-3 px-3 py-1 rounded-md bg-emerald-600/80 hover:bg-emerald-500 text-white text-xs font-medium transition">
-              📌 Guardar para track record
-            </button>
-          </div>
-          <div class="text-center">
-            <div id="r-e2" class="text-base font-semibold"></div>
-            <div class="text-xs text-slate-400 mt-1">ELO</div>
-            <div id="r-elo2" class="text-2xl font-mono mt-0.5"></div>
-            <div id="r-forma2" class="text-xs text-slate-400 mt-2 font-mono"></div>
-          </div>
-        </div>
 
-        <!-- gráfico probas + tabla modelos -->
-        <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          <div class="lg:col-span-2 bg-surface-900/50 border border-surface-700 rounded-xl p-5">
-            <h3 class="text-sm font-semibold mb-3">Probabilidades del consenso</h3>
-            <canvas id="chart-consenso"></canvas>
-          </div>
-          <div class="lg:col-span-3 bg-surface-900/50 border border-surface-700 rounded-xl p-5">
-            <h3 class="text-sm font-semibold mb-3">Detalle por modelo</h3>
-            <div class="overflow-x-auto">
-              <table class="w-full text-sm">
-                <thead class="text-xs text-slate-400 uppercase border-b border-surface-700">
-                  <tr>
-                    <th class="text-left py-2 px-2">Modelo</th>
-                    <th class="text-center py-2 px-2">Pred</th>
-                    <th class="text-right py-2 px-2">Win</th>
-                    <th class="text-right py-2 px-2">Draw</th>
-                    <th class="text-right py-2 px-2">Loss</th>
-                  </tr>
-                </thead>
-                <tbody id="tbl-modelos"></tbody>
-              </table>
+          <!-- Teams -->
+          <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-4 mb-8">
+            <div class="flex items-center gap-4">
+              <div id="pk-crest1" class="crest" style="background:#131826;display:flex;align-items:center;justify-content:center">RM</div>
+              <div>
+                <div id="pk-e1-disp" class="text-xl font-semibold tracking-tight">Real Madrid</div>
+                <div class="text-[10px] text-[#5A6478] font-mono uppercase tracking-wider mt-0.5">Local</div>
+              </div>
+            </div>
+            <span class="font-mono text-[13px] text-[#5A6478] tracking-widest">VS</span>
+            <div class="flex items-center gap-4 flex-row-reverse">
+              <div id="pk-crest2" class="crest" style="background:#131826;display:flex;align-items:center;justify-content:center">FB</div>
+              <div class="text-right">
+                <div id="pk-e2-disp" class="text-xl font-semibold tracking-tight">Bayern M&#xFC;nchen</div>
+                <div class="text-[10px] text-[#5A6478] font-mono uppercase tracking-wider mt-0.5">Visitante</div>
+              </div>
             </div>
           </div>
+
+          <!-- W/D/L bar -->
+          <div id="pk-wdl-bar" class="wdl-bar mb-3">
+            <div class="w" style="width:49%"></div>
+            <div class="d" style="width:27%"></div>
+            <div class="l" style="width:24%"></div>
+          </div>
+          <div class="grid grid-cols-3 mb-6">
+            <div>
+              <div id="pk-win-pct" class="font-mono text-[28px] font-bold leading-none" style="color:var(--pos)">49%</div>
+              <div id="pk-e1-label" class="font-mono text-[10px] text-[#5A6478] uppercase tracking-wider mt-1">Gana local</div>
+            </div>
+            <div class="text-center">
+              <div id="pk-draw-pct" class="font-mono text-[28px] font-bold leading-none" style="color:var(--amber)">27%</div>
+              <div class="font-mono text-[10px] text-[#5A6478] uppercase tracking-wider mt-1">Empate</div>
+            </div>
+            <div class="text-right">
+              <div id="pk-loss-pct" class="font-mono text-[28px] font-bold leading-none" style="color:var(--red)">24%</div>
+              <div id="pk-e2-label" class="font-mono text-[10px] text-[#5A6478] uppercase tracking-wider mt-1">Gana visitante</div>
+            </div>
+          </div>
+
+          <!-- Modelos -->
+          <div id="pk-modelos-wrap" class="hidden">
+            <div class="font-mono text-[10px] uppercase tracking-widest text-[#5A6478] mb-2">Qu&#xE9; dice cada modelo</div>
+            <div id="pk-modelos" class="space-y-1.5 mb-5"></div>
+          </div>
+
+          <!-- Últimos partidos -->
+          <div id="pk-historial-wrap" class="hidden">
+            <div class="font-mono text-[10px] uppercase tracking-widest text-[#5A6478] mb-2">&#xDA;ltimos partidos</div>
+            <div id="pk-historial" class="space-y-1"></div>
+          </div>
         </div>
 
-        <!-- marcadores predichos -->
-        <div class="bg-surface-900/50 border border-surface-700 rounded-xl p-5">
-          <h3 class="text-sm font-semibold mb-3">Marcadores estimados (regresores)</h3>
-          <div id="goles" class="grid grid-cols-2 md:grid-cols-2 gap-3"></div>
+        <!-- Right: valores + CTA -->
+        <div style="padding:36px 36px;display:flex;flex-direction:column;justify-content:space-between;gap:20px;">
+          <div>
+            <h4 class="font-mono text-[11px] tracking-widest uppercase text-[#5A6478] mb-4">Apuestas con valor</h4>
+            <div id="pk-valores" class="flex flex-col gap-3">
+              <!-- llenado por JS -->
+            </div>
+          </div>
+          <button onclick="document.getElementById('modal-pro').classList.remove('hidden')"
+            class="w-full py-3.5 rounded-lg font-bold text-[14px] tracking-wide transition-opacity hover:opacity-85"
+            style="background:var(--pos);color:#00130C;">
+            Ver predicci&#xF3;n completa &#x2192;
+          </button>
+          <p class="text-center text-[10px] text-[#5A6478] mt-2 font-mono">&#x2605; Plan Pro &middot; $5/mes &middot; M&#xE1;s estad&#xED;sticas y partidos</p>
         </div>
-      </div>
-    </section>
 
-    <!-- RANKING ELO + MÉTRICAS DEL MODELO -->
-    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="bg-surface-800 border border-surface-700 rounded-2xl p-6">
-        <h2 class="text-base font-semibold mb-1">Ranking ELO</h2>
-        <p class="text-xs text-slate-400 mb-4">Calculado incremental sobre todos los partidos</p>
-        <div class="overflow-y-auto max-h-96" id="ranking-wrap">
-          <table class="w-full text-sm">
-            <thead class="text-xs text-slate-400 uppercase sticky top-0 bg-surface-800">
-              <tr>
-                <th class="text-left py-2 px-2">#</th>
-                <th class="text-left py-2 px-2">Equipo</th>
-                <th class="text-right py-2 px-2">ELO</th>
-                <th class="py-2 px-2 w-1/3"></th>
-              </tr>
-            </thead>
-            <tbody id="tbl-elo"></tbody>
-          </table>
-        </div>
       </div>
+    </div>
+  </section>
 
-      <div class="bg-surface-800 border border-surface-700 rounded-2xl p-6">
-        <h2 class="text-base font-semibold mb-1">Métricas de los modelos</h2>
-        <p class="text-xs text-slate-400 mb-4">CV walk-forward (3 folds, ~24 partidos/test)</p>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="text-xs text-slate-400 uppercase border-b border-surface-700">
-              <tr>
-                <th class="text-left py-2 px-2">Modelo</th>
-                <th class="text-right py-2 px-2">CV Acc</th>
-                <th class="text-right py-2 px-2">CV F1</th>
-                <th class="text-right py-2 px-2">Último fold</th>
-              </tr>
-            </thead>
-            <tbody id="tbl-metricas"></tbody>
-          </table>
-        </div>
+  <!-- PARTIDOS DE HOY (track record pendientes) -->
+  <section>
+    <div class="flex items-baseline gap-4 mb-5">
+      <h2 class="text-2xl font-semibold tracking-tight">Partidos de hoy</h2>
+      <span id="picks-count" class="font-mono text-[11px] text-[#5A6478]"></span>
+      <div class="ml-auto flex gap-2">
+        <button class="chip active" data-filter="all">Todos</button>
+        <button class="chip" data-filter="alta">Alta confianza</button>
+        <button class="chip" data-filter="valor">Con valor</button>
       </div>
-    </section>
+    </div>
+    <div id="picks-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <p class="text-sm text-[#5A6478] italic">Cargando predicciones...</p>
+    </div>
+  </section><div id="r-e2"></div><div id="r-elo1"></div><div id="r-elo2"></div>
+    <div id="r-consenso-pred"></div><div id="r-diff"></div><div id="r-h2h"></div>
+    <div id="r-forma1"></div><div id="r-forma2"></div><canvas id="chart-consenso"></canvas>
+    <tbody id="tbl-modelos"></tbody><div id="goles"></div><div id="mercados-wrap">
+    <div id="m-btts"></div><div id="m-dnb"></div><div id="m-doble"></div>
+    <div id="m-totalgoles"></div><div id="m-golesequipos"></div><div id="m-handicap"></div>
+    <div id="m-winbtts"></div><div id="m-ambas-mitades"></div>
+    <div id="m-scores"></div><div id="m-htft"></div></div></div>
+    <select id="sel-e1"></select><select id="sel-e2"></select>
+    <select id="sel-fase"></select><input id="inp-runs"/>
+    <form id="form-predecir"></form>
+    <tbody id="tbl-elo"></tbody><tbody id="tbl-metricas"></tbody>
+    <div id="feature-importance"></div>
+    <div id="track-summary"></div><div id="track-kpis"></div><tbody id="tbl-track-publico"></tbody>
+    <tbody id="tbl-track"></tbody>
+    <th id="th-rf"></th><th id="th-gb"></th><th id="th-lr"></th>
+    <th id="th-svm"></th><th id="th-xgb"></th><th id="th-knn"></th>
+  </div>
 
-    <!-- FEATURE IMPORTANCE -->
-    <section class="bg-surface-800 border border-surface-700 rounded-2xl p-6">
-      <h2 class="text-base font-semibold mb-1">Qué mira el modelo</h2>
-      <p class="text-xs text-slate-400 mb-4">Top 15 features que más usa el Random Forest para decidir</p>
-      <div id="feature-importance" class="space-y-2"></div>
-    </section>
 
-    <!-- TRACK RECORD PÚBLICO (predicciones guardadas vs real) -->
-    <section class="bg-surface-800 border border-surface-700 rounded-2xl p-6">
-      <div class="flex items-center justify-between mb-4">
-        <div>
-          <h2 class="text-base font-semibold">Track record público</h2>
-          <p class="text-xs text-slate-400">Predicciones guardadas, auto-resueltas cuando llega el resultado</p>
-        </div>
-        <div id="track-summary" class="text-right text-xs"></div>
+  <!-- ════ RECORD DE PARTIDOS (público) ════ -->
+  <section id="record" class="bg-surface-800 border border-[var(--lb)] rounded-2xl p-6">
+    <div class="flex items-baseline gap-3 mb-2">
+      <h2 class="text-xl font-semibold tracking-tight">Record de partidos</h2>
+      <span id="record-badge" class="font-mono text-[11px] text-[#5A6478]"></span>
+    </div>
+    <p class="text-xs text-[#97A0B5] mb-5">Predicci&#xF3;n de cada modelo vs lo que pas&#xF3; de verdad. Verde = acert&#xF3;, rojo = fall&#xF3;.</p>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm" id="tbl-record-publico">
+        <thead class="text-[10px] text-[#5A6478] uppercase border-b border-[var(--line)] font-mono tracking-widest">
+          <tr>
+            <th class="text-left py-2 px-2">Local</th>
+            <th class="text-left py-2 px-2">Visitante</th>
+            <th class="text-center py-2 px-2">Real</th>
+            <th class="text-center py-2 px-2">RF</th>
+            <th class="text-center py-2 px-2">GB</th>
+            <th class="text-center py-2 px-2">LR</th>
+            <th class="text-center py-2 px-2">SVM</th>
+            <th class="text-center py-2 px-2">XGB</th>
+            <th class="text-center py-2 px-2">KNN</th>
+          </tr>
+        </thead>
+        <tbody id="record-body">
+          <tr><td colspan="9" class="text-center py-6 text-[#5A6478] text-xs">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ════ COMO FUNCIONA (público) ════ -->
+  <section id="como-funciona" class="bg-surface-800 border border-[var(--lb)] rounded-2xl p-6">
+    <h2 class="text-base font-semibold mb-4">&#xBF;C&#xF3;mo funciona futbolzaIA?</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div>
+        <div class="text-2xl mb-2">&#x1F4CA;</div>
+        <h3 class="font-semibold text-sm mb-1">6 modelos de Machine Learning</h3>
+        <p class="text-[12px] text-[#97A0B5] leading-relaxed">Random Forest, Gradient Boosting, Logistic Regression, SVM, XGBoost y KNN entrenados sobre partidos reales de UCL 2025&#x2013;26.</p>
       </div>
-      <div class="grid grid-cols-3 gap-3 mb-4" id="track-kpis"></div>
-      <div class="overflow-y-auto max-h-80">
-        <table class="w-full text-sm">
-          <thead class="text-xs text-slate-400 uppercase sticky top-0 bg-surface-800">
-            <tr>
-              <th class="text-left py-2 px-2">Fecha</th>
-              <th class="text-left py-2 px-2">Partido</th>
-              <th class="text-center py-2 px-2">Pred</th>
-              <th class="text-right py-2 px-2">Confianza</th>
-              <th class="text-center py-2 px-2">Real</th>
-              <th class="text-center py-2 px-2">Estado</th>
-            </tr>
-          </thead>
-          <tbody id="tbl-track-publico"></tbody>
-        </table>
+      <div>
+        <div class="text-2xl mb-2">&#x1F3AF;</div>
+        <h3 class="font-semibold text-sm mb-1">Predicci&#xF3;n calibrada</h3>
+        <p class="text-[12px] text-[#97A0B5] leading-relaxed">Los modelos usan ELO incremental, forma reciente, H2H y coeficientes UEFA. Las probabilidades se calibran con CalibratedClassifierCV.</p>
       </div>
-    </section>
-
-    <!-- TEST PREDICTIONS vs ACTUAL -->
-    <section class="bg-surface-800 border border-surface-700 rounded-2xl p-6">
-      <h2 class="text-base font-semibold mb-1">Track record (test cronológico)</h2>
-      <p class="text-xs text-slate-400 mb-4">Predicciones vs resultado real en los partidos más recientes</p>
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead class="text-xs text-slate-400 uppercase border-b border-surface-700">
-            <tr>
-              <th class="text-left py-2 px-2">Equipo 1</th>
-              <th class="text-left py-2 px-2">Equipo 2</th>
-              <th class="text-center py-2 px-2">Real</th>
-              <th id="th-rf"  class="text-center py-2 px-2">RF</th>
-              <th id="th-gb"  class="text-center py-2 px-2">GB</th>
-              <th id="th-lr"  class="text-center py-2 px-2">LR</th>
-              <th id="th-svm" class="text-center py-2 px-2">SVM</th>
-              <th id="th-xgb" class="text-center py-2 px-2">XGB</th>
-              <th id="th-knn" class="text-center py-2 px-2">KNN</th>
-            </tr>
-          </thead>
-          <tbody id="tbl-track"></tbody>
-        </table>
+      <div>
+        <div class="text-2xl mb-2">&#x2705;</div>
+        <h3 class="font-semibold text-sm mb-1">Track record p&#xFA;blico</h3>
+        <p class="text-[12px] text-[#97A0B5] leading-relaxed">Cada predicci&#xF3;n queda documentada y se resuelve autom&#xE1;ticamente cuando llega el resultado real. Sin trampa, sin edici&#xF3;n post-partido.</p>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <!-- HISTORIAL -->
-    <section class="bg-surface-800 border border-surface-700 rounded-2xl p-6">
-      <div class="flex items-center justify-between mb-4">
-        <div>
-          <h2 class="text-base font-semibold">Historial de partidos</h2>
-          <p class="text-xs text-slate-400">Dataset completo del modelo</p>
-        </div>
-        <input id="filtro-historial" type="text" placeholder="Filtrar..."
-               class="bg-surface-900 border border-surface-600 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-brand-500" />
+  <!-- TRUST FOOTER (público) -->
+  <section class="border-t border-[var(--line)] pt-8 pb-2">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-8 items-start">
+      <div>
+        <h3 class="font-semibold text-lg mb-2 tracking-tight">Predicciones honestas,<br>m&#xE9;tricas a la vista.</h3>
+        <p class="text-sm text-[#97A0B5] leading-relaxed">6 modelos ML &middot; UCL 2025&#x2013;26. Track record auditado, cada predicci&#xF3;n se resuelve autom&#xE1;ticamente.</p>
       </div>
-      <div class="overflow-y-auto max-h-96">
-        <table class="w-full text-sm">
-          <thead class="text-xs text-slate-400 uppercase sticky top-0 bg-surface-800">
-            <tr>
-              <th class="text-left py-2 px-2">Fecha</th>
-              <th class="text-left py-2 px-2">Fase</th>
-              <th class="text-left py-2 px-2">Equipo 1</th>
-              <th class="text-center py-2 px-2">Marcador</th>
-              <th class="text-left py-2 px-2">Equipo 2</th>
-            </tr>
-          </thead>
-          <tbody id="tbl-historial"></tbody>
-        </table>
+      <div class="border-l border-[var(--line)] pl-6">
+        <div id="trust-acc" class="text-4xl font-bold font-mono leading-none" style="color:var(--pos)">&#x2014;</div>
+        <div class="font-mono text-[10px] text-[#5A6478] uppercase tracking-widest mt-2">Acierto global</div>
+        <div id="trust-acc-sub" class="text-xs text-[#97A0B5] mt-1">cargando...</div>
       </div>
-    </section>
+      <div class="border-l border-[var(--line)] pl-6">
+        <div class="text-4xl font-bold font-mono leading-none" style="color:var(--cyan)">6</div>
+        <div class="font-mono text-[10px] text-[#5A6478] uppercase tracking-widest mt-2">Modelos ensemble</div>
+        <div class="text-xs text-[#97A0B5] mt-1">RF &middot; GB &middot; LR &middot; SVM &middot; XGB &middot; KNN</div>
+      </div>
+      <div class="border-l border-[var(--line)] pl-6">
+        <div id="trust-partidos" class="text-4xl font-bold font-mono leading-none text-[#E6EAF2]">&#x2014;</div>
+        <div class="font-mono text-[10px] text-[#5A6478] uppercase tracking-widest mt-2">Partidos de entrenamiento</div>
+        <div class="text-xs text-[#97A0B5] mt-1">UCL 2025&#x2013;26 completa</div>
+      </div>
+    </div>
+  </section>
 
-    <footer class="text-center text-xs text-slate-500 py-6">
-      Modelo entrenado con TimeSeriesSplit walk-forward · class_weight balanced · SelectKBest · ELO incremental
-    </footer>
-  </main>
+  <footer class="text-center text-[11px] text-[#3A4256] font-mono pb-6">
+    futbolzaIA &middot; TimeSeriesSplit walk-forward &middot; ELO incremental &middot; UCL 2025&#x2013;26
+  </footer>
 
-  <script src="/static/js/api.js"></script>
-  <script src="/static/js/app.js"></script>
+</main>
+
+<!-- ════════════════════ SCRIPTS ════════════════════ -->
+<script src="/static/js/api.js"></script>
+<script>
+// ═══ LOADING (minimal, sin app.js) ═══════════════════════════════════
+function setLoading(on, msg='Procesando...') {
+  const el = document.getElementById('loading');
+  const txt = document.getElementById('loading-text');
+  if (txt) txt.textContent = msg;
+  if (el) el.classList.toggle('hidden', !on);
+}
+
+// ═══ AUTH ═══════════════════════════════════════════════════════════
+// Cambiar credenciales aquí:
+const FZ_CREDS = {
+  admin: { user: 'admin', pass: 'fz2026!' },
+  pro:   { pass: 'pro2026' }
+};
+// ════════════════════════════════════════════════════════════════════
+
+const fzRole  = () => localStorage.getItem('fz_role');
+const fzAdmin = () => fzRole() === 'admin';
+const fzPro   = () => fzRole() === 'pro' || fzAdmin();
+
+function applyRole() {
+  const r = fzRole();
+  document.querySelectorAll('.role-pro').forEach(el =>
+    el.classList.toggle('hidden', !fzPro()));
+  document.querySelectorAll('.role-admin').forEach(el =>
+    el.classList.toggle('hidden', !fzAdmin()));
+
+  const btnLogin  = document.getElementById('btn-login');
+  const btnLogout = document.getElementById('btn-logout');
+  if (r === 'admin') {
+    btnLogin.textContent = 'Admin';
+    btnLogin.classList.add('btn-admin');
+    btnLogout.classList.remove('hidden');
+  } else if (r === 'pro') {
+    btnLogin.textContent = 'Pro';
+    btnLogin.classList.add('btn-pro');
+    btnLogout.classList.remove('hidden');
+  } else {
+    btnLogin.textContent = 'Iniciar sesión';
+    btnLogin.classList.remove('btn-admin', 'btn-pro');
+    btnLogout.classList.add('hidden');
+  }
+}
+
+function toggleLoginModal() {
+  const m = document.getElementById('modal-login');
+  const hidden = m.classList.toggle('hidden');
+  if (!hidden) setTimeout(() => document.getElementById('inp-user').focus(), 60);
+}
+
+function doLogout() {
+  localStorage.removeItem('fz_role');
+  location.reload();
+}
+
+document.getElementById('btn-modal-close').addEventListener('click', () =>
+  document.getElementById('modal-login').classList.add('hidden'));
+document.getElementById('modal-login').addEventListener('click', e => {
+  if (e.target === e.currentTarget)
+    document.getElementById('modal-login').classList.add('hidden');
+});
+document.getElementById('modal-set-pick').addEventListener('click', e => {
+  if (e.target === e.currentTarget)
+    document.getElementById('modal-set-pick').classList.add('hidden');
+});
+
+document.getElementById('form-login').addEventListener('submit', e => {
+  e.preventDefault();
+  const user  = document.getElementById('inp-user').value.trim().toLowerCase();
+  const pass  = document.getElementById('inp-pass').value;
+  const errEl = document.getElementById('login-error');
+  if (user === FZ_CREDS.admin.user && pass === FZ_CREDS.admin.pass) {
+    localStorage.setItem('fz_role', 'admin'); location.href = '/admin';
+  } else if (pass === FZ_CREDS.pro.pass) {
+    localStorage.setItem('fz_role', 'pro'); location.reload();
+  } else {
+    errEl.classList.remove('hidden');
+    document.getElementById('inp-pass').value = '';
+    document.getElementById('inp-pass').focus();
+  }
+});
+
+// Hero date
+document.getElementById('hero-date').textContent = new Date().toLocaleDateString('es-ES', {
+  weekday:'long', day:'numeric', month:'long', year:'numeric'
+}).toUpperCase();
+
+// Filter chips
+document.querySelectorAll('[data-filter]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderPicksGrid(btn.dataset.filter);
+  });
+});
+
+// ═══ LOGOS DE EQUIPOS ════════════════════════════════════════════════
+const TEAM_LOGOS = {
+  'Ajax':          'ajax.png',
+  'Arsenal':       'arsenal.png',
+  'Athletic Club': 'athletic-club.png',
+  'Atlanta':       'atalanta.png',
+  'Atleti':        'atletico.png',
+  'BDortmund':     'dortmund.png',
+  'Barcelona':     'barcelona.png',
+  'Bayern Munchen':'bayern.png',
+  'Benfica':       'benfica.png',
+  'Bodo':          'bodo.png',
+  'Chelsea':       'chelsea.png',
+  'Club Brugge':   'brugge.png',
+  'Copengagen':    'copenhague.png',
+  'Frankfurt':     'frankfurt.png',
+  'Galatasaray':   'galatasaray.png',
+  'Inter':         'inter.png',
+  'Juventus':      'juventus.png',
+  'Kairat Almaty': 'kairat.png',
+  'Leverkursen':   'leverkusen.png',
+  'Liverpool':     'liverpool.png',
+  'Man City':      'mancity.png',
+  'Marseille':     'marseille.png',
+  'Monaco':        'monaco.png',
+  'Napoli':        'napoli.png',
+  'Newcastle':     'newcastle.png',
+  'Olympiacos':    'olympiacos.png',
+  'PSV':           'psv.png',
+  'Pafos':         'pafos.png',
+  'Paris':         'psg.png',
+  'Qarabag':       'qarabag.png',
+  'Real Madrid':   'real-madrid.png',
+  'Slavia Praha':  'slavia.png',
+  'Sporting CP':   'sporting.png',
+  'Tottenham':     'tottenham.png',
+  'Union SG':      'union-sg.png',
+  'Villareal':     'villarreal.png',
+};
+function teamLogo(name) {
+  const file = TEAM_LOGOS[name];
+  return file ? '/static/images/logos/' + file : null;
+}
+function crestHTML(name, size=52) {
+  const logo = teamLogo(name);
+  const init = name.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase();
+  const sz = size < 40 ? 11 : 18;
+  const fallback = '<div style="display:none;width:'+size+'px;height:'+size+'px;border-radius:10px;background:#232A3E;place-items:center;font-weight:700;font-size:'+sz+'px;flex-shrink:0" class="grid">'+init+'</div>';
+  if (logo) return '<img src="'+logo+'" alt="'+name+'" style="width:'+size+'px;height:'+size+'px;object-fit:contain;border-radius:8px;background:#131826;padding:4px;flex-shrink:0" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">'+fallback;
+  return '<div style="width:'+size+'px;height:'+size+'px;border-radius:10px;background:#232A3E;display:grid;place-items:center;font-weight:700;font-size:'+sz+'px;flex-shrink:0">'+init+'</div>';
+}
+
+// ═══ FEATURED PICK ══════════════════════════════════════════════════
+let _currentPick = null;
+
+// Llena los selects del modal con los equipos disponibles
+function poblarSelectsPick(equipos) {
+  for (const id of ['pk-e1', 'pk-e2']) {
+    const sel = document.getElementById(id);
+    const prev = sel.value;
+    sel.innerHTML = equipos.map(e => `<option value="${e}">${e}</option>`).join('');
+    if (prev && equipos.includes(prev)) sel.value = prev;
+  }
+  // Valor por defecto diferente para cada select
+  const e1 = document.getElementById('pk-e1');
+  const e2 = document.getElementById('pk-e2');
+  if (e1.value === e2.value && equipos.length > 1) e2.value = equipos[1];
+}
+
+// Elige automáticamente los 3 mercados más relevantes como "valores"
+function autoValores(mercados, e1, e2) {
+  if (!mercados) return [];
+  const fav = mercados.dnb[e1] >= mercados.dnb[e2] ? e1 : e2;
+  return [
+    {
+      nombre: 'Ambos marcan · sí',
+      descripcion: 'Ambos equipos anotan al menos 1 gol',
+      porcentaje: Math.round(mercados.btts.si * 100),
+    },
+    {
+      nombre: 'Más de 2.5 goles',
+      descripcion: `xG total esperado: ${mercados.total_goles.xg.toFixed(2)}`,
+      porcentaje: Math.round(mercados.total_goles.over_2_5 * 100),
+    },
+    {
+      nombre: `Apuesta sin empate · ${fav.split(' ')[0]}`,
+      descripcion: 'Si hay empate, devuelven la apuesta',
+      porcentaje: Math.round(mercados.dnb[fav] * 100),
+    },
+  ];
+}
+
+function renderFeaturedPick(pick) {
+  if (!pick || !pick.equipo1) {
+    document.getElementById('pick-empty').classList.remove('hidden');
+    document.getElementById('pick-card-wrap').classList.add('hidden');
+    return;
+  }
+  _currentPick = pick;
+  document.getElementById('pick-empty').classList.add('hidden');
+  document.getElementById('pick-card-wrap').classList.remove('hidden');
+
+  const init = n => n.split(' ').map(w => w[0]).join('').slice(0,3).toUpperCase();
+
+  document.getElementById('pk-hora-disp').textContent = pick.hora || '21:00';
+  document.getElementById('pk-fase-disp').textContent = pick.fase || 'UCL';
+  document.getElementById('pk-e1-disp').textContent   = pick.equipo1;
+  document.getElementById('pk-e2-disp').textContent   = pick.equipo2;
+  document.getElementById('pk-crest1').innerHTML = crestHTML(pick.equipo1, 52);
+  document.getElementById('pk-crest2').innerHTML = crestHTML(pick.equipo2, 52);
+  document.getElementById('pk-e1-label').textContent  = `Gana ${pick.equipo1.split(' ')[0]}`;
+  document.getElementById('pk-e2-label').textContent  = `Gana ${pick.equipo2.split(' ')[0]}`;
+
+  const win  = Math.round((pick.prob_win  || 0) * 100);
+  const draw = Math.round((pick.prob_draw || 0) * 100);
+  const loss = Math.round((pick.prob_loss || 0) * 100);
+
+  document.getElementById('pk-win-pct').textContent  = `${win}%`;
+  document.getElementById('pk-draw-pct').textContent = `${draw}%`;
+  document.getElementById('pk-loss-pct').textContent = `${loss}%`;
+
+  const bar = document.getElementById('pk-wdl-bar');
+  bar.innerHTML = `
+    <div class="w" style="width:${win}%"></div>
+    <div class="d" style="width:${draw}%"></div>
+    <div class="l" style="width:${loss}%"></div>`;
+
+  // Valores
+  const valores = pick.valores || [];
+  const labels  = ['Valor 1', 'Valor 2', 'Valor 3'];
+  document.getElementById('pk-valores').innerHTML = valores.slice(0,3).map((v, i) => `
+    <div class="valor-row ${i === 0 ? 'hot' : ''}">
+      <div>
+        <div class="text-[14px] font-medium">${v.nombre || labels[i]}</div>
+        ${v.descripcion ? `<div class="font-mono text-[10px] text-[#97A0B5] mt-0.5">${v.descripcion}</div>` : ''}
+      </div>
+      <div class="pct font-mono text-[22px] font-bold tracking-tight">${v.porcentaje}%</div>
+    </div>`).join('');
+
+  if (valores.length === 0) {
+    document.getElementById('pk-valores').innerHTML = labels.map((l,i) => `
+      <div class="valor-row ${i===0?'hot':''}">
+        <div class="text-[14px] font-medium text-[#5A6478]">${l}</div>
+        <div class="pct font-mono text-[22px] font-bold tracking-tight text-[#5A6478]">&#x2014;</div>
+      </div>`).join('');
+  }
+
+  // Modelos + marcador consenso
+  const modelos = pick.modelos || [];
+  const goles   = pick.goles   || [];
+  const modelosWrap = document.getElementById('pk-modelos-wrap');
+
+  // Marcador consenso: promedio de todos los regresores
+  let scoreStr = '';
+  if (goles.length > 0) {
+    const avgG1 = Math.round(goles.reduce((a,g) => a + g.g1, 0) / goles.length);
+    const avgG2 = Math.round(goles.reduce((a,g) => a + g.g2, 0) / goles.length);
+    scoreStr = `${avgG1}–${avgG2}`;
+  }
+
+  if (modelos.length > 0) {
+    modelosWrap.classList.remove('hidden');
+    const colPred = { Win:'var(--pos)', Draw:'var(--amber)', Loss:'var(--red)' };
+    const labelPred = { Win:'Gana local', Draw:'Empate', Loss:'Gana vis.' };
+
+    document.getElementById('pk-modelos').innerHTML = modelos.map(m => {
+      const w = Math.round(m.win  * 100);
+      const d = Math.round(m.draw * 100);
+      const l = Math.round(m.loss * 100);
+      const accBadge = m.accuracy != null
+        ? `<span class="font-mono text-[9px] px-1.5 py-0.5 rounded" style="background:rgba(0,229,160,.08);color:var(--pos)">${m.accuracy}%</span>`
+        : '';
+      const color = colPred[m.pred] ?? 'var(--pos)';
+      return `
+        <div class="py-1.5 border-b border-[var(--line)]">
+          <div class="flex items-center justify-between gap-2 mb-1">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[12px] text-[#97A0B5]">${m.modelo}</span>
+              ${accBadge}
+            </div>
+            <div class="flex items-center gap-2">
+              ${scoreStr ? `<span class="font-mono text-[11px] font-bold text-[#5A6478]">${scoreStr}</span>` : ''}
+              <span class="font-mono text-[12px] font-bold" style="color:${color}">${labelPred[m.pred] ?? m.pred}</span>
+            </div>
+          </div>
+          <div class="flex gap-3">
+            <span class="font-mono text-[10px]" style="color:var(--pos)">V ${w}%</span>
+            <span class="font-mono text-[10px]" style="color:var(--amber)">E ${d}%</span>
+            <span class="font-mono text-[10px]" style="color:var(--red)">D ${l}%</span>
+          </div>
+        </div>`;
+    }).join('');
+  } else {
+    modelosWrap.classList.add('hidden');
+  }
+
+  // Últimos partidos (intercalados: 3 de E1 + 3 de E2)
+  const u1 = pick.ultimos_e1 || [];
+  const u2 = pick.ultimos_e2 || [];
+  const histWrap = document.getElementById('pk-historial-wrap');
+  if (u1.length > 0 || u2.length > 0) {
+    histWrap.classList.remove('hidden');
+    const colRes = { W: 'var(--pos)', D: 'var(--amber)', L: 'var(--red)' };
+    const resLabel = { W: 'V', D: 'E', L: 'D' };
+    const renderUlt = (lista, nombre) => lista.map(p => `
+      <div class="flex items-center gap-2 text-[11px] py-0.5">
+        <span class="font-mono text-[9px] rounded px-1 py-0.5 font-bold" style="background:${colRes[p.res]}22;color:${colRes[p.res]}">${resLabel[p.res]}</span>
+        <span class="text-[#5A6478] font-mono text-[9px] flex-shrink-0">${p.fecha.slice(5)}</span>
+        <span class="text-[#97A0B5] truncate flex-1">${nombre} <span class="text-[#5A6478]">vs</span> ${p.rival}</span>
+        <span class="font-mono font-bold text-[#E6EAF2]">${p.gf}–${p.gc}</span>
+      </div>`).join('');
+    document.getElementById('pk-historial').innerHTML =
+      (u1.length ? `<div class="text-[9px] font-mono uppercase text-[var(--pos)] tracking-wider mb-1">${pick.equipo1}</div>${renderUlt(u1, pick.equipo1)}` : '') +
+      (u2.length ? `<div class="text-[9px] font-mono uppercase text-[var(--red)] tracking-wider mt-2 mb-1">${pick.equipo2}</div>${renderUlt(u2, pick.equipo2)}` : '');
+  } else {
+    histWrap.classList.add('hidden');
+  }
+}
+
+async function eliminarPick() {
+  if (!confirm('¿Eliminar el Pick del Día?')) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/featured-pick`, { method: 'DELETE' });
+    if (!res.ok && res.status !== 204) throw new Error(await res.text());
+    document.getElementById('pick-card-wrap').classList.add('hidden');
+    document.getElementById('pick-empty').classList.remove('hidden');
+    document.getElementById('pick-empty-admin').classList.remove('hidden');
+  } catch(err) {
+    alert(`Error: ${err.message}`);
+  }
+}
+
+async function loadFeaturedPick() {
+  try {
+    const pick = await fetch(`${API_BASE}/api/featured-pick`).then(r => r.json());
+    renderFeaturedPick(pick);
+    // Pre-seleccionar equipos en el modal si ya hay un pick guardado
+    if (fzAdmin() && pick.equipo1) {
+      document.getElementById('pk-hora').value = pick.hora || '21:00';
+      document.getElementById('pk-fase').value = pick.fase || 'Cuartos';
+    }
+  } catch(_) {
+    document.getElementById('pick-empty').classList.remove('hidden');
+    document.getElementById('pick-card-wrap').classList.add('hidden');
+  }
+}
+
+document.getElementById('form-set-pick').addEventListener('submit', async e => {
+  e.preventDefault();
+  const e1   = document.getElementById('pk-e1').value;
+  const e2   = document.getElementById('pk-e2').value;
+  const hora = document.getElementById('pk-hora').value.trim() || '21:00';
+  const fase = document.getElementById('pk-fase').value;
+
+  if (!e1 || !e2 || e1 === e2) {
+    showPkStatus('Elige dos equipos distintos.', 'var(--red)'); return;
+  }
+
+  const wrap    = document.getElementById('pk-status-wrap');
+  const spinner = document.getElementById('pk-status-spinner');
+  const btn     = document.getElementById('pk-submit-btn');
+  wrap.classList.remove('hidden');
+  spinner.classList.remove('hidden');
+  document.getElementById('pk-status').classList.add('hidden');
+  btn.disabled = true; btn.style.opacity = '.5';
+
+  try {
+    // 1. Correr la predicción ML completa
+    const nRuns = parseInt(document.getElementById('pk-nruns').value) || 20;
+    const pred = await api.predecir({
+      equipo1: e1, equipo2: e2, fase, n_runs: nRuns,
+      evaluacion_id: null,
+    });
+
+    // 2. Auto-seleccionar los 3 valores desde los mercados
+    const valores = autoValores(pred.mercados, e1, e2);
+
+    const modelosConAcc = (pred.modelos||[]);
+    if (!res.ok) throw new Error(await res.text());
+
+    // 4. Mostrar en la página
+    renderFeaturedPick({ ...body, hora, fase });
+    spinner.classList.add('hidden');
+    showPkStatus('✓ Pick del Día guardado.', 'var(--pos)');
+    setTimeout(() => document.getElementById('modal-set-pick').classList.add('hidden'), 900);
+
+  } catch(err) {
+    spinner.classList.add('hidden');
+    showPkStatus(`Error: ${err.message}`, 'var(--red)');
+  } finally {
+    btn.disabled = false; btn.style.opacity = '';
+  }
+});
+
+function showPkStatus(msg, color) {
+  const el = document.getElementById('pk-status');
+  el.textContent = msg; el.style.color = color;
+  el.classList.remove('hidden');
+  document.getElementById('pk-status-wrap').classList.remove('hidden');
+  document.getElementById('pk-status-spinner').classList.add('hidden');
+}
+
+// ═══ PARTIDOS DE HOY (track record pendientes) ═══════════════════════
+let _allPendientes = [];
+
+async function renderPicksGrid(filter = 'all') {
+  const grid    = document.getElementById('picks-grid');
+  const countEl = document.getElementById('picks-count');
+  try {
+    if (_allPendientes.length === 0) {
+      const lista = await api.trackList();
+      _allPendientes = lista.filter(t => !t.resultado_real);
+    }
+    let filtered = _allPendientes;
+    if (filter === 'alta') {
+      filtered = _allPendientes.filter(t => Math.max(t.prob_win, t.prob_draw, t.prob_loss) >= 0.60);
+    }
+    countEl.textContent = `${filtered.length} partidos · UCL`;
+
+    if (filtered.length === 0) {
+      grid.innerHTML = `<div class="col-span-3 py-10 text-center text-[#5A6478] text-sm">
+        Sin predicciones${filter !== 'all' ? ' con ese filtro' : ' pendientes'} por ahora.</div>`;
+      return;
+    }
+
+    const init = n => n.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase();
+    const col  = { Win:'var(--pos)', Draw:'var(--amber)', Loss:'var(--red)' };
+    const lbl  = { Win:'Gana local', Draw:'Empate', Loss:'Gana visitante' };
+
+    grid.innerHTML = filtered.map(t => {
+      const maxP = Math.max(t.prob_win, t.prob_draw, t.prob_loss);
+      const conf = maxP >= .60 ? 'alta' : maxP >= .50 ? 'media' : 'baja';
+      const confStyle = {
+        alta:  'background:rgba(0,229,160,.1);color:var(--pos)',
+        media: 'background:rgba(255,182,39,.1);color:var(--amber)',
+        baja:  'background:rgba(255,77,94,.1);color:var(--red)',
+      }[conf];
+      const dateStr = t.fecha_partido
+        ? new Date(t.fecha_partido).toLocaleDateString('es-ES',{day:'numeric',month:'short'})
+        : 'Próximo';
+
+      return `
+        <div class="match-card bg-surface-800 border border-[var(--lb)] rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-3">
+            <div class="font-mono text-[12px] font-semibold text-[#E6EAF2]">21:00</div>
+            <div class="font-mono text-[10px] text-[#5A6478] uppercase tracking-wider">${t.fase||'UCL'}</div>
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold" style="${confStyle}">${conf.toUpperCase()}</span>
+          </div>
+          <div class="flex flex-col gap-2.5 mb-4">
+            <div class="flex items-center gap-2.5 ${t.pred_consenso==='Win'?'':'opacity-60'}">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold font-mono flex-shrink-0"
+                style="background:rgba(19,24,38,.8);border:1px solid var(--line)">${init(t.equipo1)}</div>
+              <span class="text-[15px] font-medium flex-1 leading-tight">${t.equipo1}</span>
+              <span class="font-mono text-[9px] text-[#5A6478]">LOCAL</span>
+            </div>
+            <div class="flex items-center gap-2.5 ${t.pred_consenso==='Loss'?'':'opacity-60'}">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold font-mono flex-shrink-0"
+                style="background:rgba(19,24,38,.8);border:1px solid var(--line)">${init(t.equipo2)}</div>
+              <span class="text-[15px] font-medium flex-1 leading-tight">${t.equipo2}</span>
+              <span class="font-mono text-[9px] text-[#5A6478]">VIS</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-1.5 mb-3">
+            ${['Win','Draw','Loss'].map((p,i) => {
+              const pct = [t.prob_win,t.prob_draw,t.prob_loss][i];
+              const active = t.pred_consenso === p;
+              const c = col[p];
+              return `<div class="rounded-lg p-2 text-center border ${active?'border-current':''}" style="background:${active?'rgba(0,0,0,.15)':'rgba(19,24,38,.6)'};border-color:${active?c:'var(--line)'}">
+                <div class="font-mono text-[15px] font-bold" style="color:${active?c:'#97A0B5'}">${Math.round(pct*100)}%</div>
+                <div class="font-mono text-[8px] text-[#5A6478] uppercase tracking-wide mt-0.5">${['Gana loc','Empate','Gana vis'][i]}</div>
+              </div>`;
+            }).join('')}
+          </div>
+          <div class="wdl-bar">
+            <div class="w" style="width:${Math.round(t.prob_win*100)}%"></div>
+            <div class="d" style="width:${Math.round(t.prob_draw*100)}%"></div>
+            <div class="l" style="width:${Math.round(t.prob_loss*100)}%"></div>
+          </div>
+          <div class="text-[11px] font-mono font-semibold text-center mt-2" style="color:${col[t.pred_consenso]}">
+            &#x2192; ${lbl[t.pred_consenso]} &middot; ${Math.round(maxP*100)}%
+          </div>
+        </div>`;
+    }).join('');
+  } catch(err) {
+    grid.innerHTML = `<p class="text-sm text-[#5A6478]">Error: ${err.message}</p>`;
+  }
+}
+
+// Hero count
+async function updateHeroCount() {
+  try {
+    const lista = await api.trackList();
+    const n = lista.filter(t => !t.resultado_real).length;
+    document.getElementById('hero-count').textContent = n || '—';
+  } catch(_) {}
+}
+
+// Trust stats
+async function renderTrustStats() {
+  try {
+    const s = await api.trackStats();
+    if (s.resueltas > 0) {
+      document.getElementById('trust-acc').textContent = `${(s.accuracy_global*100).toFixed(1)}%`;
+      document.getElementById('trust-acc-sub').textContent = `${s.aciertos} de ${s.resueltas} resueltas`;
+    } else {
+      document.getElementById('trust-acc').textContent = '—';
+      document.getElementById('trust-acc-sub').textContent = 'sin datos aún';
+    }
+  } catch(_) {}
+  try {
+    const p = await api.partidos();
+    document.getElementById('trust-partidos').textContent = p.length;
+  } catch(_) {}
+}
+
+// ═══ MERCADOS ════════════════════════════════════════════════════════
+function pctBar(pct, color) {
+  return `<div class="h-1 rounded-full mt-1 bg-[var(--line)] overflow-hidden">
+    <div style="width:${Math.min(pct*100,100).toFixed(1)}%;background:${color};height:100%"></div>
+  </div>`;
+}
+
+function mRow(label, prob, color='var(--pos)', hot=false) {
+  const pct = (prob * 100).toFixed(1);
+  return `<div class="${hot ? 'rounded-lg p-2' : 'flex items-center gap-2'}" style="${hot ? 'background:rgba(0,229,160,.07);border:1px solid rgba(0,229,160,.2)' : ''}">
+    <div class="flex items-center justify-between gap-2">
+      <span class="text-[12px] text-[#97A0B5] flex-1 leading-tight">${label}</span>
+      <span class="font-mono text-[14px] font-bold flex-shrink-0" style="color:${color}">${pct}%</span>
+    </div>
+    ${pctBar(prob, color)}
+  </div>`;
+}
+
+function renderMercados(m, e1, e2) {
+  if (!m) return;
+  document.getElementById('mercados-wrap').classList.remove('hidden');
+
+  // BTTS
+  document.getElementById('m-btts').innerHTML =
+    mRow('Ambos marcan · SÍ', m.btts.si, 'var(--pos)', m.btts.si > 0.5) +
+    mRow('Ambos marcan · NO', m.btts.no, 'var(--red)');
+
+  // DNB
+  document.getElementById('m-dnb').innerHTML =
+    mRow(`DNB · gana ${e1}`, m.dnb[e1], 'var(--pos)') +
+    mRow(`DNB · gana ${e2}`, m.dnb[e2], 'var(--red)');
+
+  // Doble oportunidad
+  document.getElementById('m-doble').innerHTML =
+    Object.entries(m.doble_oportunidad).map(([k,v]) => mRow(k, v, 'var(--cyan)')).join('');
+
+  // Total goles
+  const tg = m.total_goles;
+  document.getElementById('m-totalgoles').innerHTML = [
+    mRow(`Más de 0.5 goles`, tg.over_0_5, 'var(--pos)'),
+    mRow(`Más de 1.5 goles`, tg.over_1_5, 'var(--pos)', tg.over_1_5 > 0.6),
+    mRow(`Más de 2.5 goles`, tg.over_2_5, 'var(--pos)', tg.over_2_5 > 0.5),
+    mRow(`Más de 3.5 goles`, tg.over_3_5, 'var(--amber)'),
+    mRow(`Más de 4.5 goles`, tg.over_4_5, 'var(--amber)'),
+    `<div class="flex items-center justify-between pt-1 border-t border-[var(--line)]">
+       <span class="text-[11px] text-[#5A6478] font-mono">xG total esperado</span>
+       <span class="font-mono text-[13px] font-bold text-[var(--cyan)]">${tg.xg.toFixed(2)}</span>
+     </div>`,
+  ].join('');
+
+  // Goles por equipo
+  const ge1 = m.goles_e1, ge2 = m.goles_e2;
+  document.getElementById('m-golesequipos').innerHTML = [
+    `<div class="text-[10px] text-[var(--pos)] font-mono uppercase mb-1">${e1} (xG ${ge1.xg})</div>`,
+    mRow('Marca al menos 1', ge1.over_0_5, 'var(--pos)'),
+    mRow('Marca 2+', ge1.over_1_5, 'var(--amber)'),
+    `<div class="text-[10px] text-[var(--red)] font-mono uppercase mt-2 mb-1">${e2} (xG ${ge2.xg})</div>`,
+    mRow('Marca al menos 1', ge2.over_0_5, 'var(--pos)'),
+    mRow('Marca 2+', ge2.over_1_5, 'var(--amber)'),
+  ].join('');
+
+  // Hándicap
+  document.getElementById('m-handicap').innerHTML =
+    Object.entries(m.handicap).map(([k,v]) => mRow(k, v, 'var(--purple)')).join('');
+
+  // Win + BTTS
+  document.getElementById('m-winbtts').innerHTML =
+    mRow(`Gana ${e1} + ambos marcan`, m.win_btts[e1], 'var(--pos)') +
+    mRow(`Gana ${e2} + ambos marcan`, m.win_btts[e2], 'var(--red)');
+
+  // Gol en ambas mitades
+  document.getElementById('m-ambas-mitades').innerHTML =
+    `<div class="text-[10px] text-[#5A6478] font-mono uppercase mb-1">Gol en ambas mitades</div>` +
+    mRow('Hay gol en 1T y en 2T', m.gol_ambas_mitades, 'var(--cyan)', m.gol_ambas_mitades > 0.5);
+
+  // Resultado correcto
+  document.getElementById('m-scores').innerHTML = m.resultado_correcto.map(s => {
+    const isWin = s.g1 > s.g2, isDraw = s.g1 === s.g2, isLoss = s.g1 < s.g2;
+    const c = isWin ? 'var(--pos)' : isDraw ? 'var(--amber)' : 'var(--red)';
+    return `<div class="flex items-center justify-between rounded-lg px-2.5 py-2 border border-[var(--line)]"
+      style="background:rgba(19,24,38,.8)">
+      <span class="font-mono text-[13px] font-bold" style="color:${c}">${s.score}</span>
+      <span class="font-mono text-[12px] text-[#97A0B5]">${(s.prob*100).toFixed(1)}%</span>
+    </div>`;
+  }).join('');
+
+  // HT/FT
+  const htft = m.ht_ft;
+  const htftLabels = { W: `Gana ${e1}`, D: 'Empate', L: `Gana ${e2}` };
+  const htftColors = { W: 'var(--pos)', D: 'var(--amber)', L: 'var(--red)' };
+  document.getElementById('m-htft').innerHTML = Object.entries(htft).map(([k, v]) => {
+    const [ht, ft] = k.split('/');
+    const top = Math.max(...Object.values(htft));
+    const hot = v === top;
+    return `<div class="rounded px-2 py-1.5 text-center border ${hot ? '' : ''}"
+      style="background:${hot ? 'rgba(0,229,160,.06)' : 'rgba(19,24,38,.8)'};border-color:${hot ? 'rgba(0,229,160,.3)' : 'var(--line)'}">
+      <div class="font-mono text-[9px] text-[#5A6478] uppercase tracking-wider">HT:${htftLabels[ht].split(' ')[0]}</div>
+      <div class="font-mono text-[9px] text-[#5A6478] uppercase tracking-wider">FT:${htftLabels[ft].split(' ')[0]}</div>
+      <div class="font-mono text-[13px] font-bold mt-1" style="color:${htftColors[ft]}">${(v*100).toFixed(1)}%</div>
+    </div>`;
+  }).join('');
+}
+
+// ═══ RESOLVER PREDICCIÓN (admin) ════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  const btnRes = document.getElementById('btn-resolver');
+  if (btnRes) btnRes.addEventListener('click', async () => {
+    const id     = document.getElementById('res-id').value;
+    const status = document.getElementById('res-status');
+    if (!id) { status.textContent='Ingresa un ID.'; status.style.color='var(--red)'; status.classList.remove('hidden'); return; }
+    try {
+      const res = await fetch(`${API_BASE}/api/track/${id}/resolver`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          resultado_real: document.getElementById('res-resultado').value,
+          g1_real: parseInt(document.getElementById('res-g1').value)||0,
+          g2_real: parseInt(document.getElementById('res-g2').value)||0,
+        }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      status.textContent='✓ Resuelta.'; status.style.color='var(--pos)'; status.classList.remove('hidden');
+
+      await renderPicksGrid('all');
+    } catch(err) {
+      status.textContent=`Error: ${err.message}`; status.style.color='var(--red)'; status.classList.remove('hidden');
+    }
+  });
+});
+
+// ═══ RECORD DE PARTIDOS ══════════════════════════════════════════════
+const MODELO_KEYS = [
+  'Random Forest', 'Gradient Boosting', 'Logistic Regression', 'SVM', 'XGBoost', 'KNN'
+];
+
+async function renderRecordPublico() {
+  const tbody = document.getElementById('record-body');
+  const badge = document.getElementById('record-badge');
+  try {
+    const data = await fetch(`${API_BASE}/api/record`).then(r => r.json());
+    const rows = data.predicciones || [];
+    const tipo  = data.tipo || 'sin_datos';
+
+    if (badge) {
+      if (tipo === 'v2_honesto') {
+        badge.textContent = 'Predicción honesta · datos previos a cada partido';
+        badge.style.color = 'var(--pos)';
+      } else if (tipo === 'test_split') {
+        badge.textContent = 'Test cronológico · split 80/20';
+        badge.style.color = 'var(--amber)';
+      }
+    }
+
+    if (rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-[#5A6478] text-xs">Sin datos — generá el record desde el panel admin.</td></tr>`;
+      return;
+    }
+
+    // ── Formato v2 honesto ──────────────────────────────────────────
+    if (tipo === 'v2_honesto') {
+      const colC = { Win:'var(--pos)', Draw:'var(--amber)', Loss:'var(--red)' };
+      const letra = v => v ? v[0] : '—';
+      tbody.innerHTML = rows.map(r => {
+        if (r.error) return `<tr class="border-b border-[var(--line)]">
+          <td class="py-2 px-2 text-sm">${r.equipo1}</td>
+          <td class="py-2 px-2 text-sm">${r.equipo2}</td>
+          <td colspan="7" class="py-2 px-2 text-xs text-[#5A6478] font-mono">Error: ${r.error}</td></tr>`;
+
+        const real = r.resultado_real;
+        const cReal = colC[real] || '#E6EAF2';
+        const cons  = r.consenso?.pred;
+        const ok    = real && cons === real;
+
+        const modMap = {};
+        (r.modelos || []).forEach(m => { modMap[m.modelo] = m; });
+        const MODS = ['Random Forest','Gradient Boosting','Logistic Regression','SVM','XGBoost','KNN'];
+
+        const mCells = MODS.map(name => {
+          const m = modMap[name];
+          if (!m) return `<td class="py-2 px-2 text-center font-mono text-xs text-[#5A6478]">—</td>`;
+          const mOk = real && m.pred === real;
+          const mCol = mOk ? 'var(--pos)' : real ? 'var(--red)' : '#97A0B5';
+          const pct  = Math.round(Math.max(m.win||0, m.draw||0, m.loss||0) * 100);
+          const predPct = m.pred === 'Win' ? Math.round((m.win||0)*100)
+                        : m.pred === 'Draw' ? Math.round((m.draw||0)*100)
+                        : Math.round((m.loss||0)*100);
+          return `<td class="py-2 px-2 text-center font-mono text-xs leading-tight" style="color:${mCol}">
+            ${letra(m.pred)}<br><span style="color:#5A6478;font-size:9px">${predPct}%</span>
+          </td>`;
+        }).join('');
+
+        return `<tr class="border-b border-[var(--line)] hover:bg-surface-700/30">
+          <td class="py-2 px-2 text-sm">${r.equipo1}</td>
+          <td class="py-2 px-2 text-sm">${r.equipo2}</td>
+          <td class="py-2 px-2 text-center font-mono text-xs font-bold" style="color:${cReal}">${letra(real)}<br><span style="color:#5A6478;font-size:9px">${r.goles_real||'—'}</span></td>
+          ${mCells}
+        </tr>`;
+      }).join('');
+      return;
+    }
+
+    // ── Formato test split (fallback) ────────────────────────────────
+    const colRes = (real, pred, modelKey, row) => {
+      if (!pred) return `<td class="py-2 px-2 text-center font-mono text-xs text-[#5A6478]">—</td>`;
+      const ok    = real === pred;
+      const color = ok ? 'var(--pos)' : 'var(--red)';
+      const probKey = pred === 'Win' ? `${modelKey}__win` : pred === 'Draw' ? `${modelKey}__draw` : `${modelKey}__loss`;
+      const pct = row[probKey] != null ? `<br><span style="color:#5A6478;font-size:9px">${row[probKey]}%</span>` : '';
+      return `<td class="py-2 px-2 text-center font-mono text-xs leading-tight" style="color:${color}">${pred[0]}${pct}</td>`;
+    };
+    const colReal = val => {
+      if (!val) return `<td class="text-center py-2 px-2 font-mono text-xs font-bold text-[#E6EAF2]">—</td>`;
+      const c = val === 'Win' ? 'var(--pos)' : val === 'Draw' ? 'var(--amber)' : 'var(--red)';
+      return `<td class="text-center py-2 px-2 font-mono text-xs font-bold" style="color:${c}">${val[0]}</td>`;
+    };
+    tbody.innerHTML = rows.map(r => `
+      <tr class="border-b border-[var(--line)] hover:bg-surface-700/30">
+        <td class="py-2 px-2 text-sm">${r.Equipo1||'—'}</td>
+        <td class="py-2 px-2 text-sm">${r.Equipo2||'—'}</td>
+        ${colReal(r.Resultado_Real)}
+        ${colRes(r.Resultado_Real, r['Random Forest'],       'Random Forest',       r)}
+        ${colRes(r.Resultado_Real, r['Gradient Boosting'],   'Gradient Boosting',   r)}
+        ${colRes(r.Resultado_Real, r['Logistic Regression'], 'Logistic Regression', r)}
+        ${colRes(r.Resultado_Real, r['SVM'],                 'SVM',                 r)}
+        ${colRes(r.Resultado_Real, r['XGBoost'],             'XGBoost',             r)}
+        ${colRes(r.Resultado_Real, r['KNN'],                 'KNN',                 r)}
+      </tr>`).join('');
+  } catch(err) {
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-[#5A6478] text-xs">Error: ${err.message}</td></tr>`;
+  }
+}
+
+// ═══ BOOT ═══════════════════════════════════════════════════════════
+applyRole();
+
+document.addEventListener('DOMContentLoaded', async () => {
+  // Cargar equipos para los selects del modal admin
+  if (fzAdmin()) {
+    try {
+      const data = await api.equipos();
+      poblarSelectsPick(data.equipos || []);
+    } catch(_) {}
+  }
+  await Promise.allSettled([
+    loadFeaturedPick(),
+    renderPicksGrid('all'),
+    updateHeroCount(),
+    renderTrustStats(),
+    renderRecordPublico(),
+  ]);
+});
+</script>
 </body>
 </html>

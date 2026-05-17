@@ -26,64 +26,56 @@ function setLoading(on, msg = 'Procesando...') {
 // ---------------------------------------------------------------------------
 // Bootstrap
 // ---------------------------------------------------------------------------
+async function esperarEntrenamiento(id) {
+  let dots = 0;
+  while (true) {
+    const s = await api.estadoEvaluacion(id);
+    if (s.status === 'ready') return;
+    if (s.status.startsWith('error:')) throw new Error(s.status.slice(6));
+    dots = (dots + 1) % 4;
+    setLoading(true, `Entrenando modelo${'...'.slice(0, dots + 1)} (puede tardar 2-4 min)`);
+    await new Promise(r => setTimeout(r, 4000));
+  }
+}
+
 async function init() {
   try {
     setLoading(true, 'Conectando con el API...');
     await api.health();
     $('health').classList.add('text-emerald-400');
 
-    // Cargar datos que no dependen del modelo (inmediato)
-    setLoading(true, 'Cargando datos...');
-    await Promise.all([cargarEquipos(), cargarPartidos(), cargarTrackPublico()]);
-    renderKpis();
-
-    // Obtener o iniciar evaluación (no bloquea)
+    // Cargar/crear evaluación
     const evals = await api.evaluaciones();
     if (evals.length > 0) {
       state.evaluacionId = evals[evals.length - 1].id;
+      // Si el servidor se reinició durante un entrenamiento, esperarlo
+      const s = await api.estadoEvaluacion(state.evaluacionId);
+      if (s.status === 'training') {
+        setLoading(true, 'Completando entrenamiento...');
+        await esperarEntrenamiento(state.evaluacionId);
+      }
     } else {
+      setLoading(true, 'Iniciando entrenamiento...');
       const nuevaEv = await api.crearEvaluacion();
       state.evaluacionId = nuevaEv.id;
+      await esperarEntrenamiento(state.evaluacionId);
     }
     $('eval-id-text').textContent = `#${state.evaluacionId}`;
 
-    // Esperar a que el modelo esté listo (polling)
-    await esperarModelo(state.evaluacionId);
-
-    // Cargar datos que sí dependen del modelo
+    setLoading(true, 'Cargando datos del dashboard...');
     await Promise.all([
-      cargarMetricas(), cargarRanking(),
-      cargarTrackRecord(), cargarFeatureImportance(),
+      cargarEquipos(), cargarPartidos(), cargarMetricas(), cargarRanking(),
+      cargarTrackRecord(), cargarTrackPublico(), cargarFeatureImportance(),
     ]);
     renderKpis();
   } catch (err) {
     console.error(err);
     $('health').classList.remove('text-emerald-400');
     $('health').classList.add('text-rose-500');
-    setLoading(false);
     alert(`Error al inicializar: ${err.message}`);
-    return;
+  } finally {
+    setLoading(false);
   }
-  setLoading(false);
-}
-
-async function esperarModelo(evaluacionId) {
-  const MAX_ESPERA_MS = 5 * 60 * 1000; // 5 minutos
-  const INTERVALO_MS = 4000;
-  const inicio = Date.now();
-  while (Date.now() - inicio < MAX_ESPERA_MS) {
-    setLoading(true, 'Entrenando modelo... (puede tardar 1-2 min en el primer arranque)');
-    try {
-      const res = await fetch(`${API_BASE}/api/evaluaciones/${evaluacionId}/status`);
-      const data = await res.json();
-      if (data.status === 'ready') return;
-      if (data.status && data.status.startsWith('error')) throw new Error(data.status);
-    } catch (e) {
-      if (e.message.startsWith('error')) throw e;
-    }
-    await new Promise(r => setTimeout(r, INTERVALO_MS));
-  }
-  throw new Error('Timeout: el modelo tardó demasiado en entrenar');
 }
 
 // ---------------------------------------------------------------------------
@@ -201,36 +193,77 @@ const colorByAcc = (acc) =>
   :              'text-rose-400';
 
 async function cargarTrackRecord() {
-  const data = await api.prediccionesTest(state.evaluacionId);
+  const data  = await api.prediccionesTest(state.evaluacionId);
   const tbody = $('tbl-track');
-  const cell = (real, pred) => {
-    const ok = real === pred;
-    const cls = ok ? 'text-emerald-400' : 'text-rose-400';
-    return `<td class="py-2 px-2 text-center text-xs font-mono ${cls}">${pred?.[0] || '—'}</td>`;
-  };
-  tbody.innerHTML = data.predicciones.map(r => `
-    <tr class="border-b border-surface-700/50">
-      <td class="py-2 px-2">${r.Equipo1}</td>
-      <td class="py-2 px-2">${r.Equipo2}</td>
-      <td class="py-2 px-2 text-center text-xs font-mono font-semibold">${r.Resultado_Real?.[0] || '—'}</td>
-      ${cell(r.Resultado_Real, r['Random Forest'])}
-      ${cell(r.Resultado_Real, r['Gradient Boosting'])}
-      ${cell(r.Resultado_Real, r['Logistic Regression'])}
-      ${cell(r.Resultado_Real, r['SVM'])}
-      ${cell(r.Resultado_Real, r['XGBoost'])}
-      ${cell(r.Resultado_Real, r['KNN'])}
-    </tr>
-  `).join('');
+  const tipo  = data.tipo || 'test_split';
+  const rows  = data.predicciones || [];
 
-  const total = data.predicciones.length;
+  // ── Formato v2 honesto (record_historico.json) ─────────────────────
+  if (tipo === 'v2_honesto') {
+    const colC = { Win:'#00E5A0', Draw:'#FFB627', Loss:'#FF4D5E' };
+    const MODS = ['Random Forest','Gradient Boosting','Logistic Regression','SVM','XGBoost','KNN'];
+    const SHORT = ['RF','GB','LR','SVM','XGB','KNN'];
+
+    tbody.innerHTML = rows.map(r => {
+      if (r.error) return `<tr><td colspan="9" class="py-1 px-2 text-xs text-slate-500">${r.equipo1} vs ${r.equipo2} — ${r.error}</td></tr>`;
+      const real = r.resultado_real;
+      const modMap = {};
+      (r.modelos || []).forEach(m => { modMap[m.modelo] = m; });
+      const mCells = MODS.map(name => {
+        const m = modMap[name];
+        if (!m) return `<td class="py-2 px-2 text-center font-mono text-xs text-slate-500">—</td>`;
+        const ok  = real && m.pred === real;
+        const col = ok ? '#00E5A0' : real ? '#FF4D5E' : '#97A0B5';
+        const pct = m.pred === 'Win'  ? Math.round((m.win||0)*100)
+                  : m.pred === 'Draw' ? Math.round((m.draw||0)*100)
+                  :                     Math.round((m.loss||0)*100);
+        return `<td class="py-2 px-2 text-center font-mono text-xs" style="color:${col}">${m.pred[0]}<span style="color:#5A6478;font-size:9px"> ${pct}%</span></td>`;
+      }).join('');
+      const cReal = colC[real] || '#E6EAF2';
+      return `<tr class="border-b border-surface-700/50">
+        <td class="py-2 px-2 text-sm">${r.equipo1}</td>
+        <td class="py-2 px-2 text-sm">${r.equipo2}</td>
+        <td class="py-2 px-2 text-center font-mono text-xs font-bold" style="color:${cReal}">${real?.[0]||'—'}<span style="color:#5A6478;font-size:9px"> ${r.goles_real||''}</span></td>
+        ${mCells}
+      </tr>`;
+    }).join('');
+
+    // Accuracy por modelo en headers
+    for (const m of MODELOS_TRACK) {
+      const th = $(m.id); if (!th) continue;
+      const resueltos = rows.filter(r => r.resultado_real && !r.error);
+      if (!resueltos.length) { th.textContent = m.short; continue; }
+      const modMap2 = resueltos.map(r => {
+        const mm = (r.modelos||[]).find(x => x.modelo === m.key);
+        return mm ? mm.pred === r.resultado_real : false;
+      });
+      const acc = modMap2.filter(Boolean).length / modMap2.length;
+      th.innerHTML = `${m.short} <span class="${colorByAcc(acc)} font-mono ml-1">${Math.round(acc*100)}%</span>`;
+    }
+    return;
+  }
+
+  // ── Formato test_split (fallback) ──────────────────────────────────
+  const cell = (real, pred, modelKey, row) => {
+    const ok  = real === pred;
+    const col = ok ? '#00E5A0' : '#FF4D5E';
+    const probKey = pred === 'Win' ? `${modelKey}__win` : pred === 'Draw' ? `${modelKey}__draw` : `${modelKey}__loss`;
+    const pct = row[probKey] != null ? `<span style="color:#5A6478;font-size:9px"> ${row[probKey]}%</span>` : '';
+    return `<td class="py-2 px-2 text-center font-mono text-xs" style="color:${col}">${pred?.[0]||'—'}${pct}</td>`;
+  };
+  tbody.innerHTML = rows.map(r => `
+    <tr class="border-b border-surface-700/50">
+      <td class="py-2 px-2 text-sm">${r.Equipo1}</td>
+      <td class="py-2 px-2 text-sm">${r.Equipo2}</td>
+      <td class="py-2 px-2 text-center font-mono text-xs font-semibold">${r.Resultado_Real?.[0]||'—'}</td>
+      ${['Random Forest','Gradient Boosting','Logistic Regression','SVM','XGBoost','KNN']
+        .map(k => cell(r.Resultado_Real, r[k], k, r)).join('')}
+    </tr>`).join('');
   for (const m of MODELOS_TRACK) {
-    const th = $(m.id);
-    if (!th) continue;
-    if (!total) { th.textContent = m.short; continue; }
-    const aciertos = data.predicciones.filter(p => p[m.key] === p.Resultado_Real).length;
-    const acc = aciertos / total;
-    const pct = Math.round(acc * 100);
-    th.innerHTML = `${m.short} <span class="${colorByAcc(acc)} font-mono ml-1">${pct}%</span>`;
+    const th = $(m.id); if (!th) continue;
+    const aciertos = rows.filter(p => p[m.key] === p.Resultado_Real).length;
+    const acc = rows.length ? aciertos / rows.length : 0;
+    th.innerHTML = `${m.short} <span class="${colorByAcc(acc)} font-mono ml-1">${Math.round(acc*100)}%</span>`;
   }
 }
 
@@ -360,6 +393,11 @@ function renderPrediccion(r) {
       <div class="text-xs text-slate-500 mt-1 font-mono">±${g.std1.toFixed(1)} / ±${g.std2.toFixed(1)}</div>
     </div>
   `).join('');
+
+  // Mercados de apuestas (si existen en la respuesta)
+  if (typeof renderMercados === 'function') {
+    renderMercados(r.mercados || null, r.equipo1, r.equipo2);
+  }
 
   // Scroll suave al resultado
   $('resultado').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -505,16 +543,18 @@ $('btn-sync').addEventListener('click', async () => {
 $('btn-evaluar').addEventListener('click', async () => {
   if (!confirm('Reentrenar el modelo desde cero? (1-2 min)')) return;
   try {
+    setLoading(true, 'Reentrenando pipeline completo...');
     const nuevaEv = await api.crearEvaluacion();
     state.evaluacionId = nuevaEv.id;
     $('eval-id-text').textContent = `#${state.evaluacionId}`;
-    await esperarModelo(state.evaluacionId);
     await Promise.all([
       cargarPartidos(), cargarMetricas(), cargarRanking(),
       cargarTrackRecord(), cargarTrackPublico(), cargarFeatureImportance(),
     ]);
     renderKpis();
     $('resultado').classList.add('hidden');
+    const mw = document.getElementById('mercados-wrap');
+    if (mw) mw.classList.add('hidden');
   } catch (err) {
     alert(`Error al reentrenar: ${err.message}`);
   } finally {
@@ -522,4 +562,4 @@ $('btn-evaluar').addEventListener('click', async () => {
   }
 });
 
-document.addEventListener('DOMContentLoaded', init);
+if (!window.FZ_SKIP_INIT) document.addEventListener('DOMContentLoaded', init);
