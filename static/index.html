@@ -769,7 +769,7 @@ function crestHTML(name, size=52) {
   const init = name.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase();
   const sz = size < 40 ? 11 : 18;
   const fallback = '<div style="display:none;width:'+size+'px;height:'+size+'px;border-radius:10px;background:#232A3E;place-items:center;font-weight:700;font-size:'+sz+'px;flex-shrink:0" class="grid">'+init+'</div>';
-  if (logo) return '<img src="'+logo+'" alt="'+name+'" style="width:'+size+'px;height:'+size+'px;object-fit:contain;border-radius:8px;background:#131826;padding:4px;flex-shrink:0" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">'+fallback;
+  if (logo) return '<img src="'+logo+'" alt="'+name+'" style="width:'+size+'px;height:'+size+'px;object-fit:contain;border-radius:8px;background:#131826;padding:4px;flex-shrink:0" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\'">'+fallback;
   return '<div style="width:'+size+'px;height:'+size+'px;border-radius:10px;background:#232A3E;display:grid;place-items:center;font-weight:700;font-size:'+sz+'px;flex-shrink:0">'+init+'</div>';
 }
 

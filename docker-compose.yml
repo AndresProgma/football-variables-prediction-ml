@@ -1,0 +1,65 @@
+services:
+
+  # ── ML Service ──────────────────────────────────────────────────────────────
+  # Entrena modelos + predice. Puerto interno 8001, no expuesto al exterior.
+  ml:
+    build:
+      context: .
+      dockerfile: services/ml/Dockerfile
+    environment:
+      DATASET_PATH: /data/creando_dataset_modificado.xlsx
+      DATA_DIR: /data
+    volumes:
+      - ./data:/data      # acceso al Excel y para escribir record_historico.json
+    expose:
+      - "8001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8001/health').raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Scraper Service ──────────────────────────────────────────────────────────
+  # Scraping UEFA con Playwright/Chromium. Puerto interno 8002.
+  scraper:
+    build:
+      context: .
+      dockerfile: services/scraper/Dockerfile
+    expose:
+      - "8002"
+    restart: unless-stopped
+
+  # ── API Service ──────────────────────────────────────────────────────────────
+  # CRUD + orquestación. Llama a ml:8001 internamente.
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    environment:
+      DATABASE_URL: sqlite:////data/futbol.db
+      DATASET_PATH: /data/creando_dataset_modificado.xlsx
+      DATA_DIR: /data
+      ML_SERVICE_URL: http://ml:8001
+      SCRAPER_SERVICE_URL: http://scraper:8002
+      ALLOWED_ORIGINS: "*"
+    volumes:
+      - ./:/data
+    expose:
+      - "8000"
+    depends_on:
+      ml:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Frontend (nginx) ─────────────────────────────────────────────────────────
+  # Sirve HTML/JS/CSS estático + proxia /api/* y /partidos a api:8000.
+  frontend:
+    build:
+      context: .
+      dockerfile: services/frontend/Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    restart: unless-stopped

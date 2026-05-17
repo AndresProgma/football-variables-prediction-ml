@@ -1,0 +1,1519 @@
+﻿<!DOCTYPE html>
+<html lang="es"><head>
+<meta charset="UTF-8">
+<title>futbolazoia · Hoy</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<style>/* cyrillic-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("7c802a2e-1552-4fb4-878d-449c74b13d81") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("85670dc9-8664-48f2-a304-be4a58381506") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("2bf7754e-c7b5-4626-99dd-857ad57394b9") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("2176a318-3066-42bd-a4a5-d35e6f76d323") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("eac3ce68-f344-49bc-a85c-bfaaad0666ee") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("f8cc548c-2a64-458b-95ea-79f8e030ef85") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("260c7208-2d6d-41e0-a3b6-9c3f1bb85086") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("a9a5252d-b0a9-4fc1-9c01-15a3d952cd4d") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("0a7fccfd-1999-4aec-84db-1207c1d34965") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("3e422976-43a3-4de3-b005-b3ee73786bce") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("e79a39a5-7f01-4d0c-bbcf-ac921d3c3c0b") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("d5e38b9e-d4b0-420f-bc18-7bad37e041a2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("19051ded-f79b-4f15-a7c1-c23a25402ea3") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("61ba4b63-03da-4194-a9cc-c4d5be04f3e9") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("3199345b-5424-4962-a962-060b72cabef0") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("3ab88903-b67e-465a-8006-72d38e2e17d3") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("5303b733-a813-4495-a428-b67d00ef0223") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("75cc2c8e-0312-48ef-90dd-8ae919d11485") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("024aa088-8941-4593-a21d-50502ba05ac1") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("f23d1c81-9002-4116-9e1e-d3122cbd73c7") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("206b3657-45d7-4804-bb64-df8d703903b6") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fe4b4e13-5636-44a6-8af6-4ff1ba396c77") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("2b2030c4-6908-4e4f-aa32-a79902ce4edb") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("b677d074-56b6-4632-af8d-f7c47f63a22d") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("78e2c6b3-aa18-44bb-a7df-1f59e1e21866") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("e11770a4-34b1-48a8-9419-e62ac0a0dbde") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("c61d531c-6bd8-494e-9094-4444ca3978e3") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("6cc53391-a66b-4f2e-a0f3-d60efa9750c1") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("80302f20-5db5-4129-a45e-8b887d4d1db2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("ce24f6d9-e69a-4ef2-acee-fab7decb2ef1") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("330ccf8c-f0ae-472a-8ba3-ddd2a9297217") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("5b7e15e7-0ff7-49c5-86e7-761133da318d") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("ab93ae3f-9ce1-4336-8791-f211a1ab6848") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("2ab06671-204c-49c1-8a15-40b38eca2d55") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("9d23f32b-eb26-496b-98da-d6173ea3b40a") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("b556d257-e622-46c0-8b35-45ac40b6882a") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+</style>
+<style>/* futbolazoia — brand tokens (shared across variations) */
+
+:root {
+  /* Background layers */
+  --bg-0: #07090F;        /* deepest / page */
+  --bg-1: #0C1018;        /* primary surface */
+  --bg-2: #131826;        /* elevated card */
+  --bg-3: #1A2030;        /* hovered / nested */
+  --bg-4: #232A3E;        /* border-bright / divider */
+
+  /* Borders / dividers */
+  --line: rgba(255,255,255,0.06);
+  --line-strong: rgba(255,255,255,0.12);
+  --line-bright: #2A3245;
+
+  /* Text */
+  --text: #E6EAF2;
+  --text-dim: #97A0B5;
+  --text-faint: #5A6478;
+  --text-ghost: #3A4256;
+
+  /* Data accents */
+  --pos: #00E5A0;         /* primary positive / live */
+  --pos-dim: #00B27D;
+  --pos-glow: rgba(0,229,160,0.18);
+  --cyan: #34D8FF;        /* data / model */
+  --cyan-dim: #1FA5C9;
+  --amber: #FFB627;       /* warning / draw */
+  --red: #FF4D5E;         /* negative */
+  --red-dim: #C13644;
+  --purple: #8B6DFF;      /* AI / consensus */
+
+  /* Type */
+  --font-display: 'Space Grotesk', 'Helvetica Neue', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+  --font-body: 'Space Grotesk', system-ui, sans-serif;
+}
+
+/* Reset-ish */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg-0);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-feature-settings: 'ss01', 'cv11', 'tnum';
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button { font-family: inherit; }
+
+/* Utility classes shared */
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.dim { color: var(--text-dim); }
+.faint { color: var(--text-faint); }
+.pos { color: var(--pos); }
+.neg { color: var(--red); }
+.amber { color: var(--amber); }
+.cyan { color: var(--cyan); }
+
+.uppercase { text-transform: uppercase; letter-spacing: 0.08em; }
+.micro { font-size: 10px; font-weight: 600; }
+
+/* Dot indicators */
+.dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  vertical-align: middle;
+}
+.dot.live {
+  background: var(--pos);
+  box-shadow: 0 0 0 0 var(--pos-glow);
+  animation: pulse 1.8s ease-out infinite;
+}
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(0,229,160,0.5); }
+  70%  { box-shadow: 0 0 0 8px rgba(0,229,160,0); }
+  100% { box-shadow: 0 0 0 0 rgba(0,229,160,0); }
+}
+
+/* Brand logo: a hex tile + wordmark */
+.fz-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.fz-logo .mark {
+  position: relative;
+  width: 22px; height: 22px;
+  display: grid; place-items: center;
+}
+.fz-logo .mark svg { display: block; }
+.fz-logo .word { font-size: 16px; }
+.fz-logo .word b { color: var(--pos); font-weight: 700; }
+</style>
+<style>
+  body {
+    width: 1440px; min-height: 900px; overflow-x: hidden;
+    position: relative;
+    background:
+      /* dark vignette so content stays legible on top of pitch */
+      radial-gradient(ellipse 100% 100% at 50% 50%, rgba(7,9,15,0.55), rgba(7,9,15,0.92) 75%),
+      /* alternating grass stripes — classic TV pitch */
+      repeating-linear-gradient(
+        90deg,
+        #0E3B22 0px,
+        #0E3B22 120px,
+        #0A2D1A 120px,
+        #0A2D1A 240px
+      );
+  }
+  /* Pitch line markings overlay — fixed so it stays as background while scrolling */
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 900' preserveAspectRatio='xMidYMid slice'><g fill='none' stroke='white' stroke-width='2.5' stroke-opacity='0.22'><!-- outer pitch --><rect x='40' y='60' width='1360' height='780'/><!-- halfway line --><line x1='720' y1='60' x2='720' y2='840'/><!-- center circle --><circle cx='720' cy='450' r='130'/><circle cx='720' cy='450' r='4' fill='white' fill-opacity='0.3' stroke='none'/><!-- left penalty area (big) --><rect x='40' y='245' width='200' height='410'/><!-- left goal area (small) --><rect x='40' y='340' width='80' height='220'/><!-- left penalty spot --><circle cx='180' cy='450' r='4' fill='white' fill-opacity='0.3' stroke='none'/><!-- left penalty arc --><path d='M 240 370 A 130 130 0 0 1 240 530'/><!-- left goal --><rect x='28' y='400' width='12' height='100'/><!-- right penalty area --><rect x='1200' y='245' width='200' height='410'/><!-- right goal area --><rect x='1320' y='340' width='80' height='220'/><!-- right penalty spot --><circle cx='1260' cy='450' r='4' fill='white' fill-opacity='0.3' stroke='none'/><!-- right penalty arc --><path d='M 1200 370 A 130 130 0 0 0 1200 530'/><!-- right goal --><rect x='1400' y='400' width='12' height='100'/><!-- corner arcs --><path d='M 40 75 A 15 15 0 0 1 55 60'/><path d='M 1385 60 A 15 15 0 0 1 1400 75'/><path d='M 1400 825 A 15 15 0 0 1 1385 840'/><path d='M 55 840 A 15 15 0 0 1 40 825'/></g></svg>");
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    /* slight motion-blur-ish softness */
+    opacity: 0.85;
+  }
+  /* Make all sections sit above the pitch overlay */
+  .topbar, .hero, .pick-section, .matches-section, .tomorrow, .trust {
+    position: relative; z-index: 1;
+    background-color: rgba(7,9,15,0.72);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+
+  /* ===== Top bar ===== */
+  .topbar {
+    display: flex; align-items: center; gap: 36px;
+    padding: 18px 40px;
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar .fz-logo .word { font-size: 18px; }
+  .topbar .nav { display: flex; gap: 26px; }
+  .topbar .nav a {
+    color: var(--text-dim); text-decoration: none;
+    font-size: 14px; font-weight: 500; letter-spacing: -0.005em;
+  }
+  .topbar .nav a.active { color: var(--text); }
+  .topbar .right {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .topbar .pill {
+    padding: 5px 12px; border-radius: 999px;
+    background: var(--bg-2); border: 1px solid var(--line);
+    font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .topbar .pill.live { color: var(--pos); background: rgba(0,229,160,0.06); border-color: rgba(0,229,160,0.25); }
+
+  /* ===== Hero band ===== */
+  .hero {
+    padding: 56px 40px 32px;
+    border-bottom: 1px solid var(--line);
+    background:
+      radial-gradient(1200px 500px at 80% 0%, rgba(0,229,160,0.08), transparent 60%),
+      radial-gradient(600px 300px at 0% 100%, rgba(52,216,255,0.04), transparent 60%),
+      rgba(7,9,15,0.6);
+    overflow: hidden;
+    backdrop-filter: blur(2px);
+  }
+  /* Big faded football in hero corner */
+  .hero::after {
+    content: "";
+    position: absolute;
+    right: -120px; top: -120px;
+    width: 520px; height: 520px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><defs><radialGradient id='g' cx='40%25' cy='40%25'><stop offset='0%25' stop-color='%23E6EAF2' stop-opacity='0.04'/><stop offset='100%25' stop-color='%2300E5A0' stop-opacity='0.02'/></radialGradient></defs><circle cx='100' cy='100' r='90' fill='url(%23g)' stroke='%2300E5A0' stroke-opacity='0.08' stroke-width='1'/><g fill='none' stroke='%2300E5A0' stroke-opacity='0.08' stroke-width='1'><!-- pentagons of soccer ball --><polygon points='100,40 121,55 113,80 87,80 79,55'/><polygon points='40,90 56,80 70,98 60,118 44,114'/><polygon points='160,90 144,80 130,98 140,118 156,114'/><polygon points='70,150 86,138 100,148 100,165 80,168'/><polygon points='130,150 114,138 100,148 100,165 120,168'/><!-- connecting lines --><line x1='100' y1='40' x2='100' y2='20'/><line x1='121' y1='55' x2='140' y2='45'/><line x1='79' y1='55' x2='60' y2='45'/><line x1='44' y1='114' x2='30' y2='130'/><line x1='156' y1='114' x2='170' y2='130'/><line x1='80' y1='168' x2='70' y2='185'/><line x1='120' y1='168' x2='130' y2='185'/><line x1='113' y1='80' x2='130' y2='98'/><line x1='87' y1='80' x2='70' y2='98'/><line x1='60' y1='118' x2='86' y2='138'/><line x1='140' y1='118' x2='114' y2='138'/></g></svg>");
+    background-repeat: no-repeat;
+    background-size: contain;
+    opacity: 0.9;
+    pointer-events: none;
+  }
+  .hero > * { position: relative; z-index: 1; }
+  .hero .crumb {
+    font-family: var(--font-mono); font-size: 11px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--pos); margin-bottom: 12px;
+  }
+  .hero h1 {
+    margin: 0;
+    font-size: 56px; font-weight: 600;
+    letter-spacing: -0.035em; line-height: 1;
+  }
+  .hero h1 .pos { color: var(--pos); }
+  .hero .sub {
+    margin-top: 14px;
+    font-size: 18px; color: var(--text-dim);
+    max-width: 720px;
+    line-height: 1.45;
+  }
+
+  /* ===== Featured pick of the day ===== */
+  .pick-section {
+    padding: 24px 40px 40px;
+    border-bottom: 1px solid var(--line);
+  }
+  .pick-section .label {
+    font-family: var(--font-mono); font-size: 11px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--text-faint); margin-bottom: 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .pick-section .label .badge {
+    background: var(--pos); color: #00130C;
+    padding: 3px 9px; border-radius: 3px;
+    font-weight: 700; letter-spacing: 0.14em; font-size: 10px;
+  }
+
+  .pick-card {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 0;
+    background: linear-gradient(135deg, rgba(0,229,160,0.04), var(--bg-1));
+    border: 1px solid rgba(0,229,160,0.2);
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+  }
+  .pick-card::before {
+    content: "";
+    position: absolute; left: 0; right: 0; top: 0; height: 1px;
+    background: linear-gradient(to right, transparent, var(--pos), transparent);
+  }
+
+  .pick-main {
+    padding: 36px 40px;
+    border-right: 1px solid var(--line);
+  }
+  .pick-main .topline {
+    display: flex; align-items: center; gap: 14px;
+    font-family: var(--font-mono); font-size: 12px;
+    color: var(--text-dim); letter-spacing: 0.05em;
+    margin-bottom: 28px;
+  }
+  .pick-main .topline .time { color: var(--text); font-weight: 600; font-size: 14px; }
+  .pick-main .topline .sep { color: var(--text-ghost); }
+
+  .pick-teams {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+  .pick-team {
+    display: flex; align-items: center; gap: 16px;
+  }
+  .pick-team.away { flex-direction: row-reverse; text-align: right; }
+  .pick-team .crest {
+    width: 64px; height: 64px; border-radius: 12px;
+    display: grid; place-items: center;
+    font-family: var(--font-display); font-weight: 700; font-size: 22px;
+    flex: 0 0 auto;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.3);
+  }
+  .pick-team .crest.rma { background: linear-gradient(135deg,#FEBE10,#FFFFFF); color: #00529F; }
+  .pick-team .crest.bay { background: linear-gradient(135deg,#DC052D,#0066B2); color: #fff; }
+  .pick-team .name {
+    font-size: 24px; font-weight: 600;
+    letter-spacing: -0.02em; line-height: 1;
+  }
+  .pick-team .where {
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--text-faint); letter-spacing: 0.12em;
+    text-transform: uppercase; margin-top: 4px;
+  }
+  .pick-vs {
+    font-family: var(--font-mono); font-size: 13px;
+    color: var(--text-faint); letter-spacing: 0.2em;
+  }
+
+  /* W/D/L bar large */
+  .wdl-bar {
+    display: flex; height: 12px;
+    border-radius: 4px; overflow: hidden;
+    margin-bottom: 12px;
+  }
+  .wdl-bar .seg { transition: width .3s; }
+  .wdl-bar .w { background: var(--pos); }
+  .wdl-bar .d { background: var(--amber); }
+  .wdl-bar .l { background: var(--red); }
+
+  .wdl-labels {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+  }
+  .wdl-labels .col { display: flex; flex-direction: column; gap: 2px; }
+  .wdl-labels .col.center { text-align: center; align-items: center; }
+  .wdl-labels .col.right { text-align: right; align-items: flex-end; }
+  .wdl-labels .pct {
+    font-family: var(--font-mono); font-size: 28px; font-weight: 700;
+    letter-spacing: -0.03em; line-height: 1;
+  }
+  .wdl-labels .pct.w { color: var(--pos); }
+  .wdl-labels .pct.d { color: var(--amber); }
+  .wdl-labels .pct.l { color: var(--red); }
+  .wdl-labels .lab {
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--text-faint); letter-spacing: 0.15em;
+    text-transform: uppercase; margin-top: 4px;
+  }
+
+  /* Right side: bet insights */
+  .pick-side {
+    padding: 36px 36px;
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .pick-side h4 {
+    margin: 0 0 18px;
+    font-family: var(--font-mono); font-size: 11px;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--text-faint); font-weight: 500;
+  }
+  .bets-stack {
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .bet-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    padding: 14px 16px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+  .bet-row.value {
+    background: linear-gradient(135deg, rgba(0,229,160,0.08), var(--bg-2));
+    border-color: rgba(0,229,160,0.25);
+  }
+  .bet-row .l {
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .bet-row .name { font-size: 14px; font-weight: 500; }
+  .bet-row .sub {
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--text-dim); letter-spacing: 0.05em;
+  }
+  .bet-row .sub.value-tag { color: var(--pos); font-weight: 600; }
+  .bet-row .v {
+    font-family: var(--font-mono); font-size: 22px; font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .bet-row.value .v { color: var(--pos); }
+
+  .pick-cta {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .pick-cta button {
+    flex: 1;
+    padding: 14px 18px;
+    background: var(--pos); color: #00130C;
+    border: 0; border-radius: 8px;
+    font-family: var(--font-display); font-size: 14px; font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+  }
+  .pick-cta button.ghost {
+    background: transparent; color: var(--text);
+    border: 1px solid var(--line-bright);
+    flex: 0 0 auto;
+    padding: 14px 16px;
+  }
+  .pick-cta button.ghost:hover { border-color: var(--text-dim); }
+
+  /* ===== Today's matches grid ===== */
+  .matches-section {
+    padding: 48px 40px 56px;
+  }
+  .section-head {
+    display: flex; align-items: baseline; gap: 16px;
+    margin-bottom: 28px;
+  }
+  .section-head h2 {
+    margin: 0;
+    font-size: 28px; font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .section-head .count {
+    font-family: var(--font-mono); font-size: 13px; color: var(--text-faint);
+    letter-spacing: 0.04em;
+  }
+  .section-head .filters {
+    margin-left: auto;
+    display: flex; gap: 6px;
+  }
+  .filter-chip {
+    padding: 6px 13px; border-radius: 999px;
+    background: transparent; border: 1px solid var(--line);
+    color: var(--text-dim);
+    font-family: var(--font-mono); font-size: 11px;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+  }
+  .filter-chip.active { background: var(--text); color: var(--bg-0); border-color: var(--text); }
+  .filter-chip:hover:not(.active) { color: var(--text); border-color: var(--text-dim); }
+
+  .matches-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+
+  /* Match card */
+  .match {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px 24px 20px;
+    transition: transform .15s, border-color .15s, box-shadow .15s;
+    cursor: pointer;
+    position: relative;
+  }
+  .match:hover {
+    transform: translateY(-2px);
+    border-color: var(--line-bright);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+  .match-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 18px;
+  }
+  .match-head .time {
+    font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+    color: var(--text); letter-spacing: 0.02em;
+  }
+  .match-head .phase {
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--text-faint); letter-spacing: 0.12em; text-transform: uppercase;
+  }
+  .match-head .confidence {
+    padding: 3px 9px; border-radius: 4px;
+    font-family: var(--font-mono); font-size: 10px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    font-weight: 600;
+  }
+  .match-head .confidence.alta { background: rgba(0,229,160,0.1); color: var(--pos); }
+  .match-head .confidence.media { background: rgba(255,182,39,0.1); color: var(--amber); }
+  .match-head .confidence.baja { background: rgba(255,77,94,0.1); color: var(--red); }
+
+  .match-teams {
+    display: flex; flex-direction: column; gap: 12px;
+    margin-bottom: 20px;
+  }
+  .match-team {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .match-team .crest {
+    width: 32px; height: 32px; border-radius: 7px;
+    display: grid; place-items: center;
+    font-family: var(--font-display); font-weight: 700; font-size: 12px;
+    flex: 0 0 auto;
+  }
+  .match-team .name {
+    flex: 1; font-size: 16px; font-weight: 500; letter-spacing: -0.01em;
+  }
+  .match-team .badge {
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--text-faint); letter-spacing: 0.08em;
+  }
+  .match-team.fav .name { color: var(--text); font-weight: 600; }
+  .match-team.fav .name::after {
+    content: " ★"; color: var(--pos); font-size: 10px; vertical-align: middle;
+  }
+
+  /* W/D/L pill row */
+  .wdl-pills {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 18px;
+  }
+  .wdl-pill {
+    padding: 10px 8px;
+    border-radius: 8px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    text-align: center;
+  }
+  .wdl-pill .pct {
+    font-family: var(--font-mono); font-size: 18px; font-weight: 700;
+    letter-spacing: -0.02em; line-height: 1;
+  }
+  .wdl-pill .lab {
+    font-family: var(--font-mono); font-size: 9px; color: var(--text-faint);
+    letter-spacing: 0.16em; text-transform: uppercase; margin-top: 4px;
+  }
+  .wdl-pill.pred {
+    border-color: rgba(0,229,160,0.3);
+    background: linear-gradient(180deg, rgba(0,229,160,0.06), var(--bg-2));
+  }
+  .wdl-pill.pred .pct { color: var(--pos); }
+  .wdl-pill.pred-d.pred { border-color: rgba(255,182,39,0.3); background: linear-gradient(180deg, rgba(255,182,39,0.06), var(--bg-2)); }
+  .wdl-pill.pred-d.pred .pct { color: var(--amber); }
+  .wdl-pill.pred-l.pred { border-color: rgba(255,77,94,0.3); background: linear-gradient(180deg, rgba(255,77,94,0.06), var(--bg-2)); }
+  .wdl-pill.pred-l.pred .pct { color: var(--red); }
+
+  /* Bet badges row (2 max per card) */
+  .bet-badges {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .bet-badge {
+    padding: 10px 12px;
+    background: var(--bg-2);
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .bet-badge .l {
+    font-family: var(--font-mono); font-size: 9px;
+    color: var(--text-faint); letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .bet-badge .v {
+    font-family: var(--font-mono); font-size: 14px; font-weight: 600;
+    color: var(--text);
+  }
+  .bet-badge.hot {
+    background: linear-gradient(135deg, rgba(0,229,160,0.08), var(--bg-2));
+    border-color: rgba(0,229,160,0.2);
+  }
+  .bet-badge.hot .v { color: var(--pos); }
+
+  /* Crest color presets */
+  .crest.rma { background: linear-gradient(135deg,#FEBE10,#FFFFFF); color: #00529F; }
+  .crest.bay { background: linear-gradient(135deg,#DC052D,#0066B2); color: #fff; }
+  .crest.mci { background: linear-gradient(135deg,#6CABDD,#1C2C5B); color: #fff; }
+  .crest.ars { background: linear-gradient(135deg,#EF0107,#FFFFFF); color: #023474; }
+  .crest.psg { background: linear-gradient(135deg,#004170,#DA291C); color: #fff; }
+  .crest.int { background: linear-gradient(135deg,#0033A0,#000000); color: #FFCD00; }
+  .crest.bar { background: linear-gradient(135deg,#A50044,#004D98); color: #FFCD00; }
+  .crest.liv { background: linear-gradient(135deg,#C8102E,#00B2A9); color: #fff; }
+  .crest.atm { background: linear-gradient(135deg,#CB3524,#FFFFFF); color: #272E61; }
+  .crest.dor { background: linear-gradient(135deg,#FDE100,#000000); color: #000; }
+  .crest.lev { background: linear-gradient(135deg,#E32219,#000000); color: #fff; }
+  .crest.nap { background: linear-gradient(135deg,#12A0D7,#FFFFFF); color: #003366; }
+
+  /* ===== Trust section ===== */
+  .trust {
+    padding: 48px 40px;
+    border-top: 1px solid var(--line);
+    background:
+      linear-gradient(180deg, rgba(19,24,38,0.7), rgba(19,24,38,0.95)),
+      var(--bg-1);
+    backdrop-filter: blur(4px);
+  }
+  .trust-grid {
+    display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr;
+    gap: 32px;
+    align-items: center;
+  }
+  .trust .lead h3 {
+    margin: 0 0 8px;
+    font-size: 22px; font-weight: 600; letter-spacing: -0.02em;
+  }
+  .trust .lead p {
+    margin: 0; color: var(--text-dim); font-size: 14px; line-height: 1.5;
+  }
+  .trust .stat {
+    border-left: 1px solid var(--line);
+    padding-left: 24px;
+  }
+  .trust .stat .v {
+    font-family: var(--font-mono); font-size: 38px; font-weight: 700;
+    letter-spacing: -0.03em; line-height: 1;
+    color: var(--text);
+  }
+  .trust .stat .v.pos { color: var(--pos); }
+  .trust .stat .v.cyan { color: var(--cyan); }
+  .trust .stat .l {
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--text-faint); letter-spacing: 0.15em; text-transform: uppercase;
+    margin-top: 8px;
+  }
+  .trust .stat .sub {
+    font-size: 12px; color: var(--text-dim); margin-top: 4px;
+  }
+
+  /* ===== Tomorrow preview ===== */
+  .tomorrow {
+    padding: 40px 40px 56px;
+  }
+  .tomorrow-list {
+    display: flex; flex-direction: column;
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .tomorrow-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 100px 120px 1fr 100px 120px 60px;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 22px;
+    border-bottom: 1px solid var(--line);
+    transition: background .12s;
+    cursor: pointer;
+  }
+  .tomorrow-row:last-child { border-bottom: 0; }
+  .tomorrow-row:hover { background: var(--bg-2); }
+  .tomorrow-row .time {
+    font-family: var(--font-mono); font-size: 13px; color: var(--text);
+    font-weight: 600;
+  }
+  .tomorrow-row .date {
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .tomorrow-row .team-cell {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .tomorrow-row .team-cell.away { justify-content: flex-end; }
+  .tomorrow-row .team-cell .crest {
+    width: 26px; height: 26px; border-radius: 6px;
+    display: grid; place-items: center;
+    font-family: var(--font-display); font-weight: 700; font-size: 10px;
+    flex: 0 0 auto;
+  }
+  .tomorrow-row .team-cell .name {
+    font-size: 15px; font-weight: 500; letter-spacing: -0.01em;
+  }
+  .tomorrow-row .vs {
+    text-align: center;
+    font-family: var(--font-mono); font-size: 11px; color: var(--text-faint);
+    letter-spacing: 0.16em;
+  }
+
+  .tomorrow-row .verdict {
+    text-align: right;
+    font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .tomorrow-row .verdict.W { color: var(--pos); }
+  .tomorrow-row .verdict.D { color: var(--amber); }
+  .tomorrow-row .verdict.L { color: var(--red); }
+  .tomorrow-row .verdict .pct { font-weight: 500; color: var(--text-dim); margin-left: 4px; font-size: 11px; }
+
+  .tomorrow-row .mini-bar {
+    display: flex; height: 4px; border-radius: 1px; overflow: hidden;
+  }
+  .tomorrow-row .arr { color: var(--text-faint); font-size: 18px; text-align: right; }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="fz-logo">
+    <span class="mark">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <path d="M11 1.5L20 6.5V15.5L11 20.5L2 15.5V6.5L11 1.5Z" stroke="#00E5A0" stroke-width="1.4" fill="rgba(0,229,160,0.08)"></path>
+        <circle cx="11" cy="11" r="2.5" fill="#00E5A0"></circle>
+      </svg>
+    </span>
+    <span class="word">futbolzaIA</span>
+  </div>
+  <nav class="nav">
+    <a href="#" class="active">Hoy</a>
+    <a href="#">Esta semana</a>
+    <a href="#">Bracket</a>
+    <a href="#">Predicciones
+Pasadas</a>
+    <a href="#">Cómo funciona</a>
+  </nav>
+  <div class="right">
+    <span class="pill live"><span class="dot live"></span>Datos en vivo</span>
+    <span class="pill">UCL · 25/26</span>
+  </div>
+</div>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="crumb">JUEVES · 12 MARZO 2026</div>
+  <h1>Hoy juegan <span class="pos">5 partidos</span> de Champions.<br>Esto es lo que dice el modelo.</h1>
+  <p class="sub">Probabilidades de victoria, empate y derrota por partido — sin tecnicismos. Apuestas con valor, marcadores estimados y nivel de confianza, todo en una vista.</p>
+</section>
+
+<!-- Pick of the day -->
+<section class="pick-section">
+  <div class="label">★ PICK DEL DÍA
+&nbsp;
+
+</div>
+
+  <div class="pick-card">
+    <div class="pick-main">
+      <div class="topline">
+        <span class="time">21:00&nbsp;</span>
+        <span class="sep">·</span>
+        <span>OCTAVOS&nbsp;</span>
+        <span class="sep">
+</span>
+        <span>
+</span>
+      </div>
+
+      <div class="pick-teams">
+        <div class="pick-team home">
+          <div class="crest rma">RM</div>
+          <div>
+            <div class="name">Real Madrid</div>
+            <div class="where">
+</div>
+          </div>
+        </div>
+        <span class="pick-vs">vs</span>
+        <div class="pick-team away">
+          <div class="crest bay">FB</div>
+          <div>
+            <div class="name">Bayern München</div>
+            <div class="where">
+</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- W/D/L Bar -->
+      <div class="wdl-bar">
+        <div class="seg w" style="width:49%"></div>
+        <div class="seg d" style="width:27%"></div>
+        <div class="seg l" style="width:24%"></div>
+      </div>
+      <div class="wdl-labels">
+        <div class="col">
+          <span class="pct w">49%</span>
+          <span class="lab">Gana Real Madrid</span>
+        </div>
+        <div class="col center">
+          <span class="pct d">27%</span>
+          <span class="lab">Empate</span>
+        </div>
+        <div class="col right">
+          <span class="pct l">24%</span>
+          <span class="lab">Gana Bayern</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pick-side">
+      <div>
+        <h4>Apuestas con valor</h4>
+        <div class="bets-stack">
+          <div class="bet-row value">
+            <div class="l">
+              <span class="name">Over 2.5 goles</span>
+              <span class="sub value-tag">+ valor vs casa 1.65</span>
+            </div>
+            <span class="v">68%</span>
+          </div>
+          <div class="bet-row">
+            <div class="l">
+              <span class="name">Ambos marcan · sí</span>
+              <span class="sub">historial: 4 de últimos 5</span>
+            </div>
+            <span class="v">71%</span>
+          </div>
+          <div class="bet-row">
+            <div class="l">
+              <span class="name">Marcador exacto</span>
+              <span class="sub">moda: 2-1 RMA</span>
+            </div>
+            <span class="v">18%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pick-cta">
+        <button>Ver predicción completa →</button>
+        <button class="ghost" title="Guardar">
+</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Today's matches grid -->
+<section class="matches-section">
+  <div class="section-head">
+    <h2>Partidos de hoy</h2>
+    <span class="count">5 partidos · UCL</span>
+    <div class="filters">
+      <span class="filter-chip active">Todos</span>
+      <span class="filter-chip">Alta confianza</span>
+      <span class="filter-chip">Con valor</span>
+      <span class="filter-chip">
+</span>
+    </div>
+  </div>
+
+  <div class="matches-grid">
+
+    <!-- Match 1: Man City vs Arsenal -->
+    <div class="match">
+      <div class="match-head">
+        <span class="time">19:00</span>
+        <span class="phase">Octavos · vuelta</span>
+        <span class="confidence alta">Alta</span>
+      </div>
+      <div class="match-teams">
+        <div class="match-team fav">
+          <div class="crest mci">MC</div>
+          <span class="name">Manchester City</span>
+          <span class="badge">LOCAL</span>
+        </div>
+        <div class="match-team">
+          <div class="crest ars">AR</div>
+          <span class="name">Arsenal</span>
+          <span class="badge">VIS</span>
+        </div>
+      </div>
+      <div class="wdl-pills">
+        <div class="wdl-pill pred"><div class="pct">61%</div><div class="lab">Gana MCI</div></div>
+        <div class="wdl-pill"><div class="pct">17%</div><div class="lab">Empate</div></div>
+        <div class="wdl-pill"><div class="pct">22%</div><div class="lab">Gana ARS</div></div>
+      </div>
+      <div class="bet-badges">
+        <div class="bet-badge hot">
+          <span class="l">Over 2.5</span>
+          <span class="v">72%</span>
+        </div>
+        <div class="bet-badge">
+          <span class="l">Ambos marcan</span>
+          <span class="v">64%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Match 2: Inter vs PSG -->
+    <div class="match">
+      <div class="match-head">
+        <span class="time">21:00</span>
+        <span class="phase">Octavos · vuelta</span>
+        <span class="confidence media">Media</span>
+      </div>
+      <div class="match-teams">
+        <div class="match-team">
+          <div class="crest int">IN</div>
+          <span class="name">Inter</span>
+          <span class="badge">LOCAL</span>
+        </div>
+        <div class="match-team fav">
+          <div class="crest psg">PG</div>
+          <span class="name">PSG</span>
+          <span class="badge">VIS</span>
+        </div>
+      </div>
+      <div class="wdl-pills">
+        <div class="wdl-pill"><div class="pct">38%</div><div class="lab">Gana INT</div></div>
+        <div class="wdl-pill"><div class="pct">21%</div><div class="lab">Empate</div></div>
+        <div class="wdl-pill pred"><div class="pct">41%</div><div class="lab">Gana PSG</div></div>
+      </div>
+      <div class="bet-badges">
+        <div class="bet-badge">
+          <span class="l">Over 2.5</span>
+          <span class="v">54%</span>
+        </div>
+        <div class="bet-badge hot">
+          <span class="l">Doble opc. X2</span>
+          <span class="v">62%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Match 3: Real Madrid vs Bayern (the featured but as card too, OR substitute) -->
+    <div class="match" style="border-color: rgba(0,229,160,0.25); background: linear-gradient(180deg, rgba(0,229,160,0.03), var(--bg-1))">
+      <div class="match-head">
+        <span class="time">21:00</span>
+        <span class="phase">★ Pick del día</span>
+        <span class="confidence alta">Alta</span>
+      </div>
+      <div class="match-teams">
+        <div class="match-team fav">
+          <div class="crest rma">RM</div>
+          <span class="name">Real Madrid</span>
+          <span class="badge">LOCAL</span>
+        </div>
+        <div class="match-team">
+          <div class="crest bay">FB</div>
+          <span class="name">Bayern München</span>
+          <span class="badge">VIS</span>
+        </div>
+      </div>
+      <div class="wdl-pills">
+        <div class="wdl-pill pred"><div class="pct">49%</div><div class="lab">Gana RMA</div></div>
+        <div class="wdl-pill"><div class="pct">27%</div><div class="lab">Empate</div></div>
+        <div class="wdl-pill"><div class="pct">24%</div><div class="lab">Gana FCB</div></div>
+      </div>
+      <div class="bet-badges">
+        <div class="bet-badge hot">
+          <span class="l">Over 2.5</span>
+          <span class="v">68%</span>
+        </div>
+        <div class="bet-badge hot">
+          <span class="l">Ambos marcan</span>
+          <span class="v">71%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Match 4: Liverpool vs Barcelona -->
+    <div class="match">
+      <div class="match-head">
+        <span class="time">21:00</span>
+        <span class="phase">Octavos · vuelta</span>
+        <span class="confidence alta">Alta</span>
+      </div>
+      <div class="match-teams">
+        <div class="match-team fav">
+          <div class="crest liv">LI</div>
+          <span class="name">Liverpool</span>
+          <span class="badge">LOCAL</span>
+        </div>
+        <div class="match-team">
+          <div class="crest bar">BA</div>
+          <span class="name">Barcelona</span>
+          <span class="badge">VIS</span>
+        </div>
+      </div>
+      <div class="wdl-pills">
+        <div class="wdl-pill pred"><div class="pct">52%</div><div class="lab">Gana LIV</div></div>
+        <div class="wdl-pill"><div class="pct">20%</div><div class="lab">Empate</div></div>
+        <div class="wdl-pill"><div class="pct">28%</div><div class="lab">Gana BAR</div></div>
+      </div>
+      <div class="bet-badges">
+        <div class="bet-badge hot">
+          <span class="l">Over 2.5</span>
+          <span class="v">75%</span>
+        </div>
+        <div class="bet-badge">
+          <span class="l">Ambos marcan</span>
+          <span class="v">68%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Match 5: Atlético vs Napoli -->
+    <div class="match">
+      <div class="match-head">
+        <span class="time">21:00</span>
+        <span class="phase">Octavos · vuelta</span>
+        <span class="confidence baja">Baja</span>
+      </div>
+      <div class="match-teams">
+        <div class="match-team">
+          <div class="crest atm">AT</div>
+          <span class="name">Atlético Madrid</span>
+          <span class="badge">LOCAL</span>
+        </div>
+        <div class="match-team">
+          <div class="crest nap">NA</div>
+          <span class="name">Napoli</span>
+          <span class="badge">VIS</span>
+        </div>
+      </div>
+      <div class="wdl-pills">
+        <div class="wdl-pill"><div class="pct">36%</div><div class="lab">Gana ATM</div></div>
+        <div class="wdl-pill pred pred-d"><div class="pct">35%</div><div class="lab">Empate</div></div>
+        <div class="wdl-pill"><div class="pct">29%</div><div class="lab">Gana NAP</div></div>
+      </div>
+      <div class="bet-badges">
+        <div class="bet-badge">
+          <span class="l">Under 2.5</span>
+          <span class="v">58%</span>
+        </div>
+        <div class="bet-badge">
+          <span class="l">Doble opc. 1X</span>
+          <span class="v">71%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Match 6: Dortmund vs Leverkusen -->
+    <div class="match">
+      <div class="match-head">
+        <span class="time">21:00</span>
+        <span class="phase">Liga · J28</span>
+        <span class="confidence media">Media</span>
+      </div>
+      <div class="match-teams">
+        <div class="match-team">
+          <div class="crest dor">DO</div>
+          <span class="name">Borussia Dortmund</span>
+          <span class="badge">LOCAL</span>
+        </div>
+        <div class="match-team fav">
+          <div class="crest lev">LE</div>
+          <span class="name">Bayer Leverkusen</span>
+          <span class="badge">VIS</span>
+        </div>
+      </div>
+      <div class="wdl-pills">
+        <div class="wdl-pill"><div class="pct">31%</div><div class="lab">Gana BVB</div></div>
+        <div class="wdl-pill"><div class="pct">26%</div><div class="lab">Empate</div></div>
+        <div class="wdl-pill pred"><div class="pct">43%</div><div class="lab">Gana B04</div></div>
+      </div>
+      <div class="bet-badges">
+        <div class="bet-badge hot">
+          <span class="l">Over 2.5</span>
+          <span class="v">78%</span>
+        </div>
+        <div class="bet-badge">
+          <span class="l">Ambos marcan</span>
+          <span class="v">73%</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- Tomorrow preview -->
+<section class="tomorrow">
+  <div class="section-head">
+    <h2>Mañana y este fin de semana</h2>
+    <span class="count">8 partidos · vista rápida</span>
+  </div>
+  <div class="tomorrow-list">
+
+    <div class="tomorrow-row">
+      <div>
+        <div class="time">21:00</div>
+        <div class="date">VIE 13.MAR</div>
+      </div>
+      <div class="team-cell">
+        <div class="crest dor">DO</div>
+        <span class="name">Borussia Dortmund</span>
+      </div>
+      <div class="vs">VS</div>
+      <div class="team-cell away">
+        <span class="name">Atlético Madrid</span>
+        <div class="crest atm">AT</div>
+      </div>
+      <div></div>
+      <div class="verdict W">Gana BVB <span class="pct">44%</span></div>
+      <div class="mini-bar">
+        <div style="width:44%;background:var(--pos)"></div>
+        <div style="width:28%;background:var(--amber)"></div>
+        <div style="width:28%;background:var(--red)"></div>
+      </div>
+      <div class="arr">›</div>
+    </div>
+
+    <div class="tomorrow-row">
+      <div>
+        <div class="time">21:00</div>
+        <div class="date">VIE 13.MAR</div>
+      </div>
+      <div class="team-cell">
+        <div class="crest nap">NA</div>
+        <span class="name">Napoli</span>
+      </div>
+      <div class="vs">VS</div>
+      <div class="team-cell away">
+        <span class="name">FC Porto</span>
+        <div class="crest" style="background: linear-gradient(135deg,#00428C,#FFFFFF);color:#00428C">PO</div>
+      </div>
+      <div></div>
+      <div class="verdict W">Gana NAP <span class="pct">58%</span></div>
+      <div class="mini-bar">
+        <div style="width:58%;background:var(--pos)"></div>
+        <div style="width:22%;background:var(--amber)"></div>
+        <div style="width:20%;background:var(--red)"></div>
+      </div>
+      <div class="arr">›</div>
+    </div>
+
+    <div class="tomorrow-row">
+      <div>
+        <div class="time">21:00</div>
+        <div class="date">SÁB 14.MAR</div>
+      </div>
+      <div class="team-cell">
+        <div class="crest" style="background: linear-gradient(135deg,#FFCC00,#000000);color:#000">BE</div>
+        <span class="name">Benfica</span>
+      </div>
+      <div class="vs">VS</div>
+      <div class="team-cell away">
+        <span class="name">Chelsea</span>
+        <div class="crest" style="background: linear-gradient(135deg,#034694,#FFFFFF);color:#fff">CH</div>
+      </div>
+      <div></div>
+      <div class="verdict D">Empate <span class="pct">34%</span></div>
+      <div class="mini-bar">
+        <div style="width:32%;background:var(--pos)"></div>
+        <div style="width:34%;background:var(--amber)"></div>
+        <div style="width:34%;background:var(--red)"></div>
+      </div>
+      <div class="arr">›</div>
+    </div>
+
+    <div class="tomorrow-row">
+      <div>
+        <div class="time">18:30</div>
+        <div class="date">SÁB 14.MAR</div>
+      </div>
+      <div class="team-cell">
+        <div class="crest" style="background: linear-gradient(135deg,#FF6900,#FFFFFF);color:#000">FE</div>
+        <span class="name">Feyenoord</span>
+      </div>
+      <div class="vs">VS</div>
+      <div class="team-cell away">
+        <span class="name">Villarreal</span>
+        <div class="crest" style="background: linear-gradient(135deg,#FFCB05,#005CA9);color:#005CA9">VI</div>
+      </div>
+      <div></div>
+      <div class="verdict W">Gana FEY <span class="pct">47%</span></div>
+      <div class="mini-bar">
+        <div style="width:47%;background:var(--pos)"></div>
+        <div style="width:26%;background:var(--amber)"></div>
+        <div style="width:27%;background:var(--red)"></div>
+      </div>
+      <div class="arr">›</div>
+    </div>
+
+    <div class="tomorrow-row">
+      <div>
+        <div class="time">21:00</div>
+        <div class="date">DOM 15.MAR</div>
+      </div>
+      <div class="team-cell">
+        <div class="crest" style="background: linear-gradient(135deg,#FB090B,#000000);color:#fff">AC</div>
+        <span class="name">AC Milan</span>
+      </div>
+      <div class="vs">VS</div>
+      <div class="team-cell away">
+        <span class="name">Inter</span>
+        <div class="crest int">IN</div>
+      </div>
+      <div></div>
+      <div class="verdict D">Empate <span class="pct">38%</span></div>
+      <div class="mini-bar">
+        <div style="width:30%;background:var(--pos)"></div>
+        <div style="width:38%;background:var(--amber)"></div>
+        <div style="width:32%;background:var(--red)"></div>
+      </div>
+      <div class="arr">›</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- Trust footer -->
+<section class="trust">
+  <div class="trust-grid">
+    <div class="lead">
+      <h3>Predicciones honestas, métricas a la vista</h3>
+      <p>6 modelos de machine learning entrenados con 2.840 partidos de Champions. Resultados auditados en público — cada predicción se resuelve sola al llegar el resultado real.</p>
+    </div>
+    <div class="stat">
+      <div class="v pos">61.3%</div>
+      <div class="l">Acierto · 30 días</div>
+      <div class="sub">38 de 62 partidos</div>
+    </div>
+    <div class="stat">
+      <div class="v cyan">0.218</div>
+      <div class="l">Brier score</div>
+      <div class="sub">menor = más calibrado</div>
+    </div>
+    <div class="stat">
+      <div class="v">+12.4%</div>
+      <div class="l">ROI estimado</div>
+      <div class="sub">apostando los “pick del día”</div>
+    </div>
+  </div>
+</section>
+
+
+
+</body></html>

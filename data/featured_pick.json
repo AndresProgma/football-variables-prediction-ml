@@ -1,0 +1,268 @@
+{
+  "equipo1": "Paris",
+  "equipo2": "Arsenal",
+  "hora": "21:00",
+  "fase": "Final",
+  "prob_win": 0.8458849321011302,
+  "prob_draw": 0.1319122780783431,
+  "prob_loss": 0.022202789820526637,
+  "valores": [
+    {
+      "nombre": "Ambos marcan · sí",
+      "descripcion": "Ambos equipos anotan",
+      "porcentaje": 71
+    },
+    {
+      "nombre": "Más de 2.5 goles",
+      "descripcion": "xG total: 4.01",
+      "porcentaje": 76
+    },
+    {
+      "nombre": "DNB · Paris",
+      "descripcion": "Sin empate",
+      "porcentaje": 97
+    }
+  ],
+  "mercados": {
+    "btts": {
+      "si": 0.7123,
+      "no": 0.2877
+    },
+    "resultado_correcto": [
+      {
+        "score": "2-1",
+        "g1": 2,
+        "g2": 1,
+        "prob": 0.088
+      },
+      {
+        "score": "1-1",
+        "g1": 1,
+        "g2": 1,
+        "prob": 0.0701
+      },
+      {
+        "score": "3-1",
+        "g1": 3,
+        "g2": 1,
+        "prob": 0.0686
+      },
+      {
+        "score": "2-2",
+        "g1": 2,
+        "g2": 2,
+        "prob": 0.063
+      },
+      {
+        "score": "2-0",
+        "g1": 2,
+        "g2": 0,
+        "prob": 0.059
+      },
+      {
+        "score": "1-2",
+        "g1": 1,
+        "g2": 2,
+        "prob": 0.0505
+      },
+      {
+        "score": "3-2",
+        "g1": 3,
+        "g2": 2,
+        "prob": 0.0505
+      },
+      {
+        "score": "3-0",
+        "g1": 3,
+        "g2": 0,
+        "prob": 0.0481
+      },
+      {
+        "score": "4-1",
+        "g1": 4,
+        "g2": 1,
+        "prob": 0.0442
+      },
+      {
+        "score": "1-0",
+        "g1": 1,
+        "g2": 0,
+        "prob": 0.0435
+      }
+    ],
+    "dnb": {
+      "Paris": 0.9744,
+      "Arsenal": 0.0256
+    },
+    "doble_oportunidad": {
+      "1X (gana Paris o empate)": 0.9778,
+      "X2 (empate o gana Arsenal)": 0.1541,
+      "12 (no empate)": 0.8681
+    },
+    "goles_e1": {
+      "nombre": "Paris",
+      "xg": 2.5,
+      "over_0_5": 0.9162,
+      "over_1_5": 0.7126,
+      "over_2_5": 0.4533
+    },
+    "goles_e2": {
+      "nombre": "Arsenal",
+      "xg": 1.5,
+      "over_0_5": 0.7764,
+      "over_1_5": 0.4432,
+      "over_2_5": 0.1959
+    },
+    "total_goles": {
+      "xg": 4.01,
+      "over_0_5": 0.9804,
+      "over_1_5": 0.9106,
+      "over_2_5": 0.7598,
+      "over_3_5": 0.5625,
+      "over_4_5": 0.371
+    },
+    "handicap": {
+      "Paris -1": 0.3886,
+      "Paris -1.5": 0.3886,
+      "Paris -2": 0.2154,
+      "+1 Arsenal": 0.9016,
+      "+1.5 Arsenal": 0.9016,
+      "Arsenal -1": 0.0984,
+      "Arsenal -1.5": 0.0984
+    },
+    "win_btts": {
+      "Paris": 0.3882,
+      "Arsenal": 0.156
+    },
+    "gol_ambas_mitades": 0.7419,
+    "ht_ft": {
+      "W/W": 0.3975,
+      "W/D": 0.0496,
+      "W/L": 0.0191,
+      "D/W": 0.1585,
+      "D/D": 0.0898,
+      "D/L": 0.0735,
+      "L/W": 0.0418,
+      "L/D": 0.0483,
+      "L/L": 0.1218
+    }
+  },
+  "modelos": [
+    {
+      "modelo": "XGBoost",
+      "pred": "Win",
+      "win": 0.7948020249900628,
+      "draw": 0.17205831542389757,
+      "loss": 0.03313965958603964,
+      "accuracy": 65
+    },
+    {
+      "modelo": "Gradient Boosting",
+      "pred": "Win",
+      "win": 0.7802717248484438,
+      "draw": 0.1621465663802904,
+      "loss": 0.05758170877126567,
+      "accuracy": 69
+    },
+    {
+      "modelo": "Random Forest",
+      "pred": "Win",
+      "win": 0.8735332338376022,
+      "draw": 0.11222905734554989,
+      "loss": 0.01423770881684781,
+      "accuracy": 65
+    },
+    {
+      "modelo": "Logistic Regression",
+      "pred": "Win",
+      "win": 0.8570737657437931,
+      "draw": 0.14292623425620696,
+      "loss": 0,
+      "accuracy": 72
+    },
+    {
+      "modelo": "SVM",
+      "pred": "Win",
+      "win": 0.8780624862905778,
+      "draw": 0.10488513855716881,
+      "loss": 0.017052375152253347,
+      "accuracy": 66
+    },
+    {
+      "modelo": "KNN",
+      "pred": "Win",
+      "win": 0.8915663568963016,
+      "draw": 0.09722835650694495,
+      "loss": 0.011205286596753341,
+      "accuracy": 66
+    }
+  ],
+  "goles": [
+    {
+      "modelo": "Random Forest",
+      "g1": 2,
+      "g2": 1,
+      "std1": 0.05623159524866836,
+      "std2": 0.020569813990976026
+    },
+    {
+      "modelo": "XGBoost",
+      "g1": 3,
+      "g2": 2,
+      "std1": 0,
+      "std2": 0
+    }
+  ],
+  "ultimos_e1": [
+    {
+      "fecha": "—",
+      "rival": "Arsenal",
+      "gf": 1,
+      "gc": 1,
+      "res": "D",
+      "es_local": true
+    },
+    {
+      "fecha": "—",
+      "rival": "Bayern Munchen",
+      "gf": 1,
+      "gc": 1,
+      "res": "D",
+      "es_local": false
+    },
+    {
+      "fecha": "—",
+      "rival": "Bayern Munchen",
+      "gf": 5,
+      "gc": 4,
+      "res": "W",
+      "es_local": true
+    }
+  ],
+  "ultimos_e2": [
+    {
+      "fecha": "—",
+      "rival": "Paris",
+      "gf": 1,
+      "gc": 1,
+      "res": "D",
+      "es_local": false
+    },
+    {
+      "fecha": "—",
+      "rival": "Atleti",
+      "gf": 1,
+      "gc": 0,
+      "res": "W",
+      "es_local": true
+    },
+    {
+      "fecha": "—",
+      "rival": "Atleti",
+      "gf": 1,
+      "gc": 1,
+      "res": "D",
+      "es_local": false
+    }
+  ]
+}
