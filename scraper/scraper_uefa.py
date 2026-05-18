@@ -129,6 +129,49 @@ MAPEO_EQUIPOS = {
     'psv eindhoven': 'PSV',
     'napoli': 'Napoli',
     'ssc napoli': 'Napoli',
+    # ── Equipos que jugaron UCL 2024-25 pero no en 2025-26 ──────────
+    'ac milan': 'Milan',
+    'milan': 'Milan',
+    'rb leipzig': 'Leipzig',
+    'red bull leipzig': 'Leipzig',
+    'leipzig': 'Leipzig',
+    'aston villa': 'Aston Villa',
+    'aston villa fc': 'Aston Villa',
+    'girona': 'Girona',
+    'girona fc': 'Girona',
+    'stuttgart': 'Stuttgart',
+    'vfb stuttgart': 'Stuttgart',
+    'lille': 'Lille',
+    'losc lille': 'Lille',
+    'losc': 'Lille',
+    'stade brestois': 'Brest',
+    'stade brestois 29': 'Brest',
+    'brest': 'Brest',
+    'feyenoord': 'Feyenoord',
+    'gnk dinamo': 'Dinamo Zagreb',
+    'gnk dinamo zagreb': 'Dinamo Zagreb',
+    'dinamo zagreb': 'Dinamo Zagreb',
+    'rb salzburg': 'Salzburg',
+    'red bull salzburg': 'Salzburg',
+    'fc salzburg': 'Salzburg',
+    'salzburg': 'Salzburg',
+    'sturm graz': 'Sturm Graz',
+    'sk sturm graz': 'Sturm Graz',
+    'young boys': 'Young Boys',
+    'bsc young boys': 'Young Boys',
+    'sparta praha': 'Sparta Praha',
+    'ac sparta praha': 'Sparta Praha',
+    'sparta prague': 'Sparta Praha',
+    'slovan bratislava': 'Slovan Bratislava',
+    'sk slovan bratislava': 'Slovan Bratislava',
+    'celtic': 'Celtic',
+    'celtic fc': 'Celtic',
+    'shakhtar donetsk': 'Shakhtar',
+    'fc shakhtar donetsk': 'Shakhtar',
+    'shakhtar': 'Shakhtar',
+    'bologna': 'Bologna',
+    'bologna fc 1909': 'Bologna',
+    'bologna fc': 'Bologna',
 }
 
 
@@ -321,6 +364,26 @@ def obtener_info_partido(url, headless=True, debug=False):
         if m:
             info['goles_e1'] = int(m.group(1))
             info['goles_e2'] = int(m.group(2))
+
+        # Fallback equipos: si la URL no traía slug (URL canónica /match/{id}/),
+        # extraer del JSON embebido en la página. UEFA mete homeTeam/awayTeam
+        # en attributos data-options. Las keys son internationalName.
+        if not info['equipo1'] or not info['equipo2']:
+            mh = re.search(r'"homeTeam"\s*:\s*\{[^}]*?"internationalName"\s*:\s*"([^"]+)"',
+                           html_full)
+            ma = re.search(r'"awayTeam"\s*:\s*\{[^}]*?"internationalName"\s*:\s*"([^"]+)"',
+                           html_full)
+            if mh and ma:
+                info['equipo1'] = normalizar_nombre_equipo(mh.group(1))
+                info['equipo2'] = normalizar_nombre_equipo(ma.group(1))
+            else:
+                # Fallback al aria-label: "Equipo1 - Equipo2 X-Y"
+                m2 = re.search(
+                    r'aria-label="\s*([^"-]+?)\s+-\s+([^"-]+?)\s+\d+\s*[-–]\s*\d+\s*"',
+                    html_full)
+                if m2:
+                    info['equipo1'] = normalizar_nombre_equipo(m2.group(1).strip())
+                    info['equipo2'] = normalizar_nombre_equipo(m2.group(2).strip())
 
         if debug:
             page.screenshot(path='debug_uefa.png', full_page=True)

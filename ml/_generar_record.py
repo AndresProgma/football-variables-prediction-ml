@@ -7,12 +7,13 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-ROOT    = Path(__file__).parent.parent
-DATASET = ROOT / "data" / "creando_dataset_modificado.xlsx"
-OUTPUT  = ROOT / "data" / "record_historico.json"
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_PROJECT_ROOT))
 
-sys.path.insert(0, str(ROOT))
-from knime_workflow_converter import main as run_pipeline, predecir_partido
+DATASET = _PROJECT_ROOT / "data" / "creando_dataset_modificado.xlsx"
+OUTPUT  = _PROJECT_ROOT / "data" / "record_historico.json"
+
+from ml.knime_workflow_converter import main as run_pipeline, predecir_partido
 
 N_TEST = 35
 

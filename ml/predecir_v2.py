@@ -29,12 +29,12 @@ from pathlib import Path
 
 import pandas as pd
 
-BASE = Path(__file__).parent
-sys.path.insert(0, str(BASE))
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_PROJECT_ROOT))
 
-from knime_workflow_converter import main as run_pipeline, predecir_partido
+from ml.knime_workflow_converter import main as run_pipeline, predecir_partido
 
-DATASET = BASE / "creando_dataset_modificado.xlsx"
+DATASET = _PROJECT_ROOT / "data" / "creando_dataset_modificado.xlsx"
 
 
 def _norm_fecha(f):

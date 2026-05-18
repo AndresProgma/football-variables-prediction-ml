@@ -277,6 +277,7 @@
       </div>
       <div class="card">
         <h2 class="text-sm font-semibold mb-1">M&#xE9;tricas CV</h2>
+        <p class="text-[11px] text-[#97A0B5] mb-3 font-mono">Walk-forward sobre <span id="metricas-n-partidos">&#x2014;</span> partidos &middot; 3 folds</p>
         <div class="overflow-x-auto mt-3">
           <table class="w-full text-sm">
             <thead class="text-[10px] text-[#5A6478] uppercase border-b border-[var(--line)] font-mono">
@@ -378,16 +379,17 @@
               <th class="text-left py-2 px-2">Local</th>
               <th class="text-left py-2 px-2">Visitante</th>
               <th class="text-center py-2 px-2">Real</th>
-              <th class="text-center py-2 px-2">RF</th>
-              <th class="text-center py-2 px-2">GB</th>
-              <th class="text-center py-2 px-2">LR</th>
-              <th class="text-center py-2 px-2">SVM</th>
-              <th class="text-center py-2 px-2">XGB</th>
-              <th class="text-center py-2 px-2">KNN</th>
+              <th id="admin-th-rec-rf"  class="text-center py-2 px-2">RF</th>
+              <th id="admin-th-rec-gb"  class="text-center py-2 px-2">GB</th>
+              <th id="admin-th-rec-lr"  class="text-center py-2 px-2">LR</th>
+              <th id="admin-th-rec-svm" class="text-center py-2 px-2">SVM</th>
+              <th id="admin-th-rec-xgb" class="text-center py-2 px-2">XGB</th>
+              <th id="admin-th-rec-knn" class="text-center py-2 px-2">KNN</th>
+              <th id="admin-th-rec-dc"  class="text-center py-2 px-2">DC</th>
             </tr>
           </thead>
           <tbody id="admin-record-body">
-            <tr><td colspan="9" class="text-center py-6 text-[#5A6478] text-xs">Cargando...</td></tr>
+            <tr><td colspan="10" class="text-center py-6 text-[#5A6478] text-xs">Cargando...</td></tr>
           </tbody>
         </table>
       </div>
@@ -538,13 +540,45 @@ async function adminReentrenar() {
 }
 
 // ═══ RECORD (mismo que página pública) ═══════════════════
+const _ADMIN_MODS_REC = [
+  { key: 'Random Forest',       short: 'RF',  id: 'admin-th-rec-rf'  },
+  { key: 'Gradient Boosting',   short: 'GB',  id: 'admin-th-rec-gb'  },
+  { key: 'Logistic Regression', short: 'LR',  id: 'admin-th-rec-lr'  },
+  { key: 'SVM',                 short: 'SVM', id: 'admin-th-rec-svm' },
+  { key: 'XGBoost',             short: 'XGB', id: 'admin-th-rec-xgb' },
+  { key: 'KNN',                 short: 'KNN', id: 'admin-th-rec-knn' },
+  { key: 'Dixon-Coles',         short: 'DC',  id: 'admin-th-rec-dc'  },
+];
+const _adminColorByAccRec = acc =>
+  acc >= 0.65 ? '#00E5A0' : acc >= 0.5 ? '#FFB627' : '#FF4D5E';
+
+function _updateAdminRecHeaders(rows, tipo) {
+  const total = rows.filter(r => (r.resultado_real || r.Resultado_Real) && !r.error).length;
+  for (const m of _ADMIN_MODS_REC) {
+    const th = document.getElementById(m.id);
+    if (!th) continue;
+    if (!total) { th.textContent = m.short; continue; }
+    const aciertos = rows.filter(r => {
+      const real = r.resultado_real || r.Resultado_Real;
+      if (!real) return false;
+      const pred = tipo === 'v2_honesto'
+        ? (r.modelos || []).find(x => x.modelo === m.key)?.pred
+        : r[m.key];
+      return pred === real;
+    }).length;
+    const acc = aciertos / total;
+    th.innerHTML = `${m.short} <span class="font-mono ml-1" style="color:${_adminColorByAccRec(acc)}">${(acc*100).toFixed(1)}%</span>`;
+  }
+}
+
 async function cargarAdminRecord() {
   const tbody = document.getElementById('admin-record-body');
   const badge = document.getElementById('admin-record-badge');
   try {
     const data = await fetch(`${API_BASE}/api/record`).then(r => r.json());
-    const rows = data.predicciones || [];
+    const rows = (data.predicciones || []).slice().reverse();
     const tipo = data.tipo || 'sin_datos';
+    _updateAdminRecHeaders(rows, tipo);
 
     if (badge) {
       badge.textContent = tipo === 'v2_honesto'
@@ -554,16 +588,16 @@ async function cargarAdminRecord() {
     }
 
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-[#5A6478] text-xs">Sin datos — regenerá el record desde el tab Dataset.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" class="text-center py-6 text-[#5A6478] text-xs">Sin datos — regenerá el record desde el tab Dataset.</td></tr>`;
       return;
     }
 
     const colC = { Win:'#00E5A0', Draw:'#FFB627', Loss:'#FF4D5E' };
 
     if (tipo === 'v2_honesto') {
-      const MODS = ['Random Forest','Gradient Boosting','Logistic Regression','SVM','XGBoost','KNN'];
+      const MODS = ['Random Forest','Gradient Boosting','Logistic Regression','SVM','XGBoost','KNN','Dixon-Coles'];
       tbody.innerHTML = rows.map(r => {
-        if (r.error) return `<tr><td colspan="9" class="py-1 px-2 text-xs text-[#5A6478]">${r.equipo1} vs ${r.equipo2} — ${r.error}</td></tr>`;
+        if (r.error) return `<tr><td colspan="10" class="py-1 px-2 text-xs text-[#5A6478]">${r.equipo1} vs ${r.equipo2} — ${r.error}</td></tr>`;
         const real = r.resultado_real;
         const cReal = colC[real] || '#E6EAF2';
         const modMap = {};
@@ -588,7 +622,7 @@ async function cargarAdminRecord() {
       tbody.innerHTML = rows.map(r => {
         const real = r.Resultado_Real;
         const cReal = colC[real] || '#E6EAF2';
-        const MODS = ['Random Forest','Gradient Boosting','Logistic Regression','SVM','XGBoost','KNN'];
+        const MODS = ['Random Forest','Gradient Boosting','Logistic Regression','SVM','XGBoost','KNN','Dixon-Coles'];
         const mCells = MODS.map(k => {
           const pred = r[k];
           if (!pred) return `<td class="py-2 px-2 text-center font-mono text-xs text-[#5A6478]">—</td>`;
@@ -607,7 +641,7 @@ async function cargarAdminRecord() {
       }).join('');
     }
   } catch(err) {
-    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-[#5A6478] text-xs">Error: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-[#5A6478] text-xs">Error: ${err.message}</td></tr>`;
   }
 }
 

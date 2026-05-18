@@ -26,7 +26,7 @@ import pandas as pd
 BASE = Path(__file__).parent.parent
 sys.path.insert(0, str(BASE))
 
-import knime_workflow_converter as pipe
+import ml.knime_workflow_converter as pipe
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
@@ -40,7 +40,7 @@ from sklearn.metrics import accuracy_score, f1_score, log_loss
 from xgboost import XGBClassifier
 
 
-DATASET = str(BASE / "creando_dataset_modificado.xlsx")
+DATASET = str(BASE / "data" / "creando_dataset_modificado.xlsx")
 RESULTADOS_CSV = BASE / "experimentos" / "resultados.csv"
 
 

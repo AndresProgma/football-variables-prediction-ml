@@ -1,0 +1,2312 @@
+[
+  {
+    "equipo1": "Inter",
+    "equipo2": "Bodo",
+    "fecha": "2026-02-24",
+    "fase": "Playoffs",
+    "goles_real": "1–2",
+    "resultado_real": "Loss",
+    "consenso": {
+      "pred": "Win",
+      "win": 0.471,
+      "draw": 0.2839,
+      "loss": 0.2451
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Draw",
+        "win": 0.3317,
+        "draw": 0.6139,
+        "loss": 0.0544
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Win",
+        "win": 0.4623,
+        "draw": 0.2464,
+        "loss": 0.2913
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Win",
+        "win": 0.4696,
+        "draw": 0.2659,
+        "loss": 0.2644
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Win",
+        "win": 0.4748,
+        "draw": 0.2319,
+        "loss": 0.2933
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.5833,
+        "draw": 0.2232,
+        "loss": 0.1935
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Loss",
+        "win": 0.3743,
+        "draw": 0.1486,
+        "loss": 0.4772
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Win",
+        "win": 0.6011,
+        "draw": 0.2573,
+        "loss": 0.1416
+      }
+    ],
+    "acierto": false
+  },
+  {
+    "equipo1": "Atleti",
+    "equipo2": "Club Brugge",
+    "fecha": "2026-02-24",
+    "fase": "Playoffs",
+    "goles_real": "4–1",
+    "resultado_real": "Win",
+    "consenso": {
+      "pred": "Win",
+      "win": 0.5424,
+      "draw": 0.1846,
+      "loss": 0.273
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Draw",
+        "win": 0.3088,
+        "draw": 0.4436,
+        "loss": 0.2476
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Win",
+        "win": 0.6432,
+        "draw": 0.1217,
+        "loss": 0.2351
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Win",
+        "win": 0.6091,
+        "draw": 0.1187,
+        "loss": 0.2722
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Win",
+        "win": 0.8835,
+        "draw": 0.0935,
+        "loss": 0.0231
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.608,
+        "draw": 0.1629,
+        "loss": 0.2291
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Loss",
+        "win": 0.3754,
+        "draw": 0.1496,
+        "loss": 0.475
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Loss",
+        "win": 0.369,
+        "draw": 0.2023,
+        "loss": 0.4287
+      }
+    ],
+    "acierto": true
+  },
+  {
+    "equipo1": "Newcastle",
+    "equipo2": "Qarabag",
+    "fecha": "2026-02-24",
+    "fase": "Playoffs",
+    "goles_real": "3–2",
+    "resultado_real": "Win",
+    "consenso": {
+      "pred": "Win",
+      "win": 0.5574,
+      "draw": 0.0853,
+      "loss": 0.3573
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Loss",
+        "win": 0.1936,
+        "draw": 0.1048,
+        "loss": 0.7016
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Win",
+        "win": 0.5886,
+        "draw": 0.0768,
+        "loss": 0.3346
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Win",
+        "win": 0.4424,
+        "draw": 0.1157,
+        "loss": 0.4419
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Win",
+        "win": 0.7705,
+        "draw": 0.0605,
+        "loss": 0.169
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.9908,
+        "draw": 0.0072,
+        "loss": 0.002
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Loss",
+        "win": 0.3755,
+        "draw": 0.1486,
+        "loss": 0.476
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Win",
+        "win": 0.5403,
+        "draw": 0.0835,
+        "loss": 0.3762
+      }
+    ],
+    "acierto": true
+  },
+  {
+    "equipo1": "Paris",
+    "equipo2": "Monaco",
+    "fecha": "2026-02-25",
+    "fase": "Playoffs",
+    "goles_real": "2–2",
+    "resultado_real": "Draw",
+    "consenso": {
+      "pred": "Win",
+      "win": 0.6301,
+      "draw": 0.0907,
+      "loss": 0.2791
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Win",
+        "win": 0.474,
+        "draw": 0.1237,
+        "loss": 0.4023
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Win",
+        "win": 0.714,
+        "draw": 0.1064,
+        "loss": 0.1797
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Win",
+        "win": 0.5389,
+        "draw": 0.0951,
+        "loss": 0.366
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Win",
+        "win": 0.9167,
+        "draw": 0.0507,
+        "loss": 0.0326
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.9076,
+        "draw": 0.0623,
+        "loss": 0.03
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Win",
+        "win": 0.4661,
+        "draw": 0.114,
+        "loss": 0.4199
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Loss",
+        "win": 0.3934,
+        "draw": 0.0831,
+        "loss": 0.5236
+      }
+    ],
+    "acierto": false
+  },
+  {
+    "equipo1": "Juventus",
+    "equipo2": "Galatasaray",
+    "fecha": "2026-02-25",
+    "fase": "Playoffs",
+    "goles_real": "3–2",
+    "resultado_real": "Win",
+    "consenso": {
+      "pred": "Win",
+      "win": 0.528,
+      "draw": 0.2013,
+      "loss": 0.2708
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Win",
+        "win": 0.4662,
+        "draw": 0.4646,
+        "loss": 0.0692
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Win",
+        "win": 0.5932,
+        "draw": 0.1154,
+        "loss": 0.2915
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Win",
+        "win": 0.561,
+        "draw": 0.1931,
+        "loss": 0.2459
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Win",
+        "win": 0.8255,
+        "draw": 0.0665,
+        "loss": 0.108
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.5145,
+        "draw": 0.2359,
+        "loss": 0.2496
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Loss",
+        "win": 0.3607,
+        "draw": 0.1842,
+        "loss": 0.455
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Loss",
+        "win": 0.3748,
+        "draw": 0.1492,
+        "loss": 0.4761
+      }
+    ],
+    "acierto": true
+  },
+  {
+    "equipo1": "Real Madrid",
+    "equipo2": "Benfica",
+    "fecha": "2026-02-25",
+    "fase": "Playoffs",
+    "goles_real": "2–1",
+    "resultado_real": "Win",
+    "consenso": {
+      "pred": "Win",
+      "win": 0.4906,
+      "draw": 0.246,
+      "loss": 0.2634
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Draw",
+        "win": 0.3601,
+        "draw": 0.5758,
+        "loss": 0.0641
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Win",
+        "win": 0.5316,
+        "draw": 0.1641,
+        "loss": 0.3043
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Win",
+        "win": 0.4434,
+        "draw": 0.1691,
+        "loss": 0.3875
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Win",
+        "win": 0.6586,
+        "draw": 0.1405,
+        "loss": 0.2009
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.7634,
+        "draw": 0.1534,
+        "loss": 0.0832
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Loss",
+        "win": 0.3217,
+        "draw": 0.2372,
+        "loss": 0.4411
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Loss",
+        "win": 0.3554,
+        "draw": 0.2817,
+        "loss": 0.3629
+      }
+    ],
+    "acierto": true
+  },
+  {
+    "equipo1": "Atlanta",
+    "equipo2": "BDortmund",
+    "fecha": "2026-02-25",
+    "fase": "Playoffs",
+    "goles_real": "4–1",
+    "resultado_real": "Win",
+    "consenso": {
+      "pred": "Loss",
+      "win": 0.2837,
+      "draw": 0.1883,
+      "loss": 0.528
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Draw",
+        "win": 0.0978,
+        "draw": 0.4652,
+        "loss": 0.4371
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Loss",
+        "win": 0.2979,
+        "draw": 0.1025,
+        "loss": 0.5996
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Loss",
+        "win": 0.2053,
+        "draw": 0.1206,
+        "loss": 0.6742
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Loss",
+        "win": 0.2725,
+        "draw": 0.0703,
+        "loss": 0.6572
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.3994,
+        "draw": 0.2554,
+        "loss": 0.3451
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Loss",
+        "win": 0.3743,
+        "draw": 0.1486,
+        "loss": 0.4772
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Loss",
+        "win": 0.3385,
+        "draw": 0.156,
+        "loss": 0.5056
+      }
+    ],
+    "acierto": false
+  },
+  {
+    "equipo1": "Newcastle",
+    "equipo2": "Barcelona",
+    "fecha": "2026-03-10",
+    "fase": "Octavos",
+    "goles_real": "1–1",
+    "resultado_real": "Draw",
+    "consenso": {
+      "pred": "Loss",
+      "win": 0.367,
+      "draw": 0.2267,
+      "loss": 0.4063
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Draw",
+        "win": 0.1052,
+        "draw": 0.6097,
+        "loss": 0.2851
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Loss",
+        "win": 0.3437,
+        "draw": 0.1634,
+        "loss": 0.4929
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Loss",
+        "win": 0.2861,
+        "draw": 0.1381,
+        "loss": 0.5757
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Loss",
+        "win": 0.3432,
+        "draw": 0.1565,
+        "loss": 0.5003
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.7174,
+        "draw": 0.1671,
+        "loss": 0.1155
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Loss",
+        "win": 0.3743,
+        "draw": 0.1486,
+        "loss": 0.4772
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Win",
+        "win": 0.399,
+        "draw": 0.2034,
+        "loss": 0.3975
+      }
+    ],
+    "acierto": false
+  },
+  {
+    "equipo1": "Atleti",
+    "equipo2": "Tottenham",
+    "fecha": "2026-03-10",
+    "fase": "Octavos",
+    "goles_real": "5–2",
+    "resultado_real": "Win",
+    "consenso": {
+      "pred": "Win",
+      "win": 0.5615,
+      "draw": 0.1936,
+      "loss": 0.2449
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Win",
+        "win": 0.6828,
+        "draw": 0.1504,
+        "loss": 0.1667
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Win",
+        "win": 0.5172,
+        "draw": 0.215,
+        "loss": 0.2677
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Win",
+        "win": 0.5887,
+        "draw": 0.2197,
+        "loss": 0.1917
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Win",
+        "win": 0.5617,
+        "draw": 0.1856,
+        "loss": 0.2527
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.3712,
+        "draw": 0.2687,
+        "loss": 0.3601
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Win",
+        "win": 0.6265,
+        "draw": 0.1384,
+        "loss": 0.2351
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Win",
+        "win": 0.5824,
+        "draw": 0.1775,
+        "loss": 0.2401
+      }
+    ],
+    "acierto": true
+  },
+  {
+    "equipo1": "Atlanta",
+    "equipo2": "Bayern Munchen",
+    "fecha": "2026-03-10",
+    "fase": "Octavos",
+    "goles_real": "1–6",
+    "resultado_real": "Loss",
+    "consenso": {
+      "pred": "Loss",
+      "win": 0.2755,
+      "draw": 0.1099,
+      "loss": 0.6147
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Loss",
+        "win": 0.2101,
+        "draw": 0.0367,
+        "loss": 0.7532
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Loss",
+        "win": 0.1822,
+        "draw": 0.0945,
+        "loss": 0.7233
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Loss",
+        "win": 0.2413,
+        "draw": 0.171,
+        "loss": 0.5877
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Loss",
+        "win": 0.3034,
+        "draw": 0.0861,
+        "loss": 0.6104
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Loss",
+        "win": 0.0875,
+        "draw": 0.2103,
+        "loss": 0.7022
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Loss",
+        "win": 0.3521,
+        "draw": 0.0781,
+        "loss": 0.5698
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Win",
+        "win": 0.5517,
+        "draw": 0.0923,
+        "loss": 0.3561
+      }
+    ],
+    "acierto": true
+  },
+  {
+    "equipo1": "Galatasaray",
+    "equipo2": "Liverpool",
+    "fecha": "2026-03-10",
+    "fase": "Octavos",
+    "goles_real": "1–0",
+    "resultado_real": "Win",
+    "consenso": {
+      "pred": "Loss",
+      "win": 0.3311,
+      "draw": 0.1743,
+      "loss": 0.4946
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Loss",
+        "win": 0.1511,
+        "draw": 0.1804,
+        "loss": 0.6685
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Loss",
+        "win": 0.3542,
+        "draw": 0.2369,
+        "loss": 0.409
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Win",
+        "win": 0.508,
+        "draw": 0.1642,
+        "loss": 0.3279
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Loss",
+        "win": 0.3272,
+        "draw": 0.1536,
+        "loss": 0.5192
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Loss",
+        "win": 0.2028,
+        "draw": 0.2612,
+        "loss": 0.536
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Loss",
+        "win": 0.3198,
+        "draw": 0.1145,
+        "loss": 0.5657
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Win",
+        "win": 0.4549,
+        "draw": 0.1093,
+        "loss": 0.4358
+      }
+    ],
+    "acierto": false
+  },
+  {
+    "equipo1": "Paris",
+    "equipo2": "Chelsea",
+    "fecha": "2026-03-11",
+    "fase": "Octavos",
+    "goles_real": "5–2",
+    "resultado_real": "Win",
+    "consenso": {
+      "pred": "Win",
+      "win": 0.6461,
+      "draw": 0.1456,
+      "loss": 0.2083
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Win",
+        "win": 0.7408,
+        "draw": 0.1515,
+        "loss": 0.1077
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Win",
+        "win": 0.475,
+        "draw": 0.1727,
+        "loss": 0.3523
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Win",
+        "win": 0.5849,
+        "draw": 0.1873,
+        "loss": 0.2278
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Win",
+        "win": 0.616,
+        "draw": 0.1508,
+        "loss": 0.2331
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.8333,
+        "draw": 0.0975,
+        "loss": 0.0692
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Win",
+        "win": 0.7122,
+        "draw": 0.0818,
+        "loss": 0.206
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Win",
+        "win": 0.5606,
+        "draw": 0.1775,
+        "loss": 0.262
+      }
+    ],
+    "acierto": true
+  },
+  {
+    "equipo1": "Real Madrid",
+    "equipo2": "Man City",
+    "fecha": "2026-03-11",
+    "fase": "Octavos",
+    "goles_real": "3–0",
+    "resultado_real": "Win",
+    "consenso": {
+      "pred": "Loss",
+      "win": 0.3475,
+      "draw": 0.2044,
+      "loss": 0.4481
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Draw",
+        "win": 0.2437,
+        "draw": 0.4892,
+        "loss": 0.267
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Loss",
+        "win": 0.3479,
+        "draw": 0.2165,
+        "loss": 0.4356
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Loss",
+        "win": 0.3164,
+        "draw": 0.1192,
+        "loss": 0.5643
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Loss",
+        "win": 0.3904,
+        "draw": 0.118,
+        "loss": 0.4916
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.5394,
+        "draw": 0.2095,
+        "loss": 0.2511
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Loss",
+        "win": 0.3743,
+        "draw": 0.1486,
+        "loss": 0.4772
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Loss",
+        "win": 0.2204,
+        "draw": 0.1296,
+        "loss": 0.6499
+      }
+    ],
+    "acierto": false
+  },
+  {
+    "equipo1": "Bodo",
+    "equipo2": "Sporting CP",
+    "fecha": "2026-03-11",
+    "fase": "Octavos",
+    "goles_real": "3–0",
+    "resultado_real": "Win",
+    "consenso": {
+      "pred": "Loss",
+      "win": 0.3927,
+      "draw": 0.1894,
+      "loss": 0.4179
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Loss",
+        "win": 0.3636,
+        "draw": 0.1256,
+        "loss": 0.5107
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Loss",
+        "win": 0.3674,
+        "draw": 0.2347,
+        "loss": 0.3978
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Win",
+        "win": 0.4014,
+        "draw": 0.2143,
+        "loss": 0.3843
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Loss",
+        "win": 0.3767,
+        "draw": 0.2245,
+        "loss": 0.3988
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Loss",
+        "win": 0.3224,
+        "draw": 0.222,
+        "loss": 0.4556
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Win",
+        "win": 0.439,
+        "draw": 0.1552,
+        "loss": 0.4058
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Win",
+        "win": 0.4787,
+        "draw": 0.1492,
+        "loss": 0.3721
+      }
+    ],
+    "acierto": false
+  },
+  {
+    "equipo1": "Leverkursen",
+    "equipo2": "Arsenal",
+    "fecha": "2026-03-11",
+    "fase": "Octavos",
+    "goles_real": "1–1",
+    "resultado_real": "Draw",
+    "consenso": {
+      "pred": "Loss",
+      "win": 0.299,
+      "draw": 0.1527,
+      "loss": 0.5482
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Loss",
+        "win": 0.2367,
+        "draw": 0.1068,
+        "loss": 0.6565
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Win",
+        "win": 0.4255,
+        "draw": 0.1805,
+        "loss": 0.3939
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Loss",
+        "win": 0.3258,
+        "draw": 0.1857,
+        "loss": 0.4885
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Loss",
+        "win": 0.3397,
+        "draw": 0.1682,
+        "loss": 0.4921
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Loss",
+        "win": 0.0684,
+        "draw": 0.1695,
+        "loss": 0.7621
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Loss",
+        "win": 0.3378,
+        "draw": 0.103,
+        "loss": 0.5592
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Loss",
+        "win": 0.3593,
+        "draw": 0.1554,
+        "loss": 0.4853
+      }
+    ],
+    "acierto": false
+  },
+  {
+    "equipo1": "Chelsea",
+    "equipo2": "Paris",
+    "fecha": "2026-03-17",
+    "fase": "Octavos",
+    "goles_real": "0–3",
+    "resultado_real": "Loss",
+    "consenso": {
+      "pred": "Loss",
+      "win": 0.3558,
+      "draw": 0.0592,
+      "loss": 0.585
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Loss",
+        "win": 0.2608,
+        "draw": 0.0153,
+        "loss": 0.7239
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Loss",
+        "win": 0.3708,
+        "draw": 0.0412,
+        "loss": 0.588
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Loss",
+        "win": 0.3585,
+        "draw": 0.0682,
+        "loss": 0.5733
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Loss",
+        "win": 0.3815,
+        "draw": 0.0357,
+        "loss": 0.5829
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Loss",
+        "win": 0.1928,
+        "draw": 0.1709,
+        "loss": 0.6363
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Loss",
+        "win": 0.4784,
+        "draw": 0.0,
+        "loss": 0.5216
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Loss",
+        "win": 0.4477,
+        "draw": 0.0831,
+        "loss": 0.4692
+      }
+    ],
+    "acierto": true
+  },
+  {
+    "equipo1": "Man City",
+    "equipo2": "Real Madrid",
+    "fecha": "2026-03-17",
+    "fase": "Octavos",
+    "goles_real": "1–2",
+    "resultado_real": "Loss",
+    "consenso": {
+      "pred": "Loss",
+      "win": 0.3455,
+      "draw": 0.1344,
+      "loss": 0.5202
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Loss",
+        "win": 0.2293,
+        "draw": 0.0921,
+        "loss": 0.6786
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Loss",
+        "win": 0.3654,
+        "draw": 0.1352,
+        "loss": 0.4994
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Loss",
+        "win": 0.3499,
+        "draw": 0.1453,
+        "loss": 0.5048
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Loss",
+        "win": 0.3971,
+        "draw": 0.1301,
+        "loss": 0.4728
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.455,
+        "draw": 0.2222,
+        "loss": 0.3228
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Loss",
+        "win": 0.3207,
+        "draw": 0.1183,
+        "loss": 0.561
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Loss",
+        "win": 0.3009,
+        "draw": 0.0974,
+        "loss": 0.6017
+      }
+    ],
+    "acierto": true
+  },
+  {
+    "equipo1": "Sporting CP",
+    "equipo2": "Bodo",
+    "fecha": "2026-03-17",
+    "fase": "Octavos",
+    "goles_real": "5–0",
+    "resultado_real": "Win",
+    "consenso": {
+      "pred": "Win",
+      "win": 0.6377,
+      "draw": 0.1347,
+      "loss": 0.2276
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Win",
+        "win": 0.7001,
+        "draw": 0.1376,
+        "loss": 0.1624
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Win",
+        "win": 0.5373,
+        "draw": 0.1694,
+        "loss": 0.2933
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Win",
+        "win": 0.5911,
+        "draw": 0.1208,
+        "loss": 0.2881
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Win",
+        "win": 0.5757,
+        "draw": 0.1433,
+        "loss": 0.281
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.6744,
+        "draw": 0.1722,
+        "loss": 0.1534
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Win",
+        "win": 0.7598,
+        "draw": 0.0627,
+        "loss": 0.1775
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Win",
+        "win": 0.6256,
+        "draw": 0.1366,
+        "loss": 0.2378
+      }
+    ],
+    "acierto": true
+  },
+  {
+    "equipo1": "Arsenal",
+    "equipo2": "Leverkursen",
+    "fecha": "2026-03-17",
+    "fase": "Octavos",
+    "goles_real": "2–0",
+    "resultado_real": "Win",
+    "consenso": {
+      "pred": "Win",
+      "win": 0.5612,
+      "draw": 0.0813,
+      "loss": 0.3574
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Win",
+        "win": 0.6669,
+        "draw": 0.1149,
+        "loss": 0.2183
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Win",
+        "win": 0.5535,
+        "draw": 0.0378,
+        "loss": 0.4087
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Win",
+        "win": 0.4728,
+        "draw": 0.0757,
+        "loss": 0.4515
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Win",
+        "win": 0.5083,
+        "draw": 0.0571,
+        "loss": 0.4346
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.8835,
+        "draw": 0.0912,
+        "loss": 0.0253
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Win",
+        "win": 0.4875,
+        "draw": 0.1095,
+        "loss": 0.403
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Loss",
+        "win": 0.3563,
+        "draw": 0.0831,
+        "loss": 0.5607
+      }
+    ],
+    "acierto": true
+  },
+  {
+    "equipo1": "Tottenham",
+    "equipo2": "Atleti",
+    "fecha": "2026-03-18",
+    "fase": "Octavos",
+    "goles_real": "3–2",
+    "resultado_real": "Win",
+    "consenso": {
+      "pred": "Loss",
+      "win": 0.4496,
+      "draw": 0.0995,
+      "loss": 0.4509
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Loss",
+        "win": 0.4006,
+        "draw": 0.0577,
+        "loss": 0.5417
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Loss",
+        "win": 0.3823,
+        "draw": 0.1184,
+        "loss": 0.4994
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Loss",
+        "win": 0.4606,
+        "draw": 0.0539,
+        "loss": 0.4856
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Loss",
+        "win": 0.4036,
+        "draw": 0.1033,
+        "loss": 0.4931
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.5503,
+        "draw": 0.2412,
+        "loss": 0.2085
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Win",
+        "win": 0.4933,
+        "draw": 0.0426,
+        "loss": 0.4642
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Loss",
+        "win": 0.4568,
+        "draw": 0.0792,
+        "loss": 0.464
+      }
+    ],
+    "acierto": false
+  },
+  {
+    "equipo1": "Barcelona",
+    "equipo2": "Newcastle",
+    "fecha": "2026-03-18",
+    "fase": "Octavos",
+    "goles_real": "7–2",
+    "resultado_real": "Win",
+    "consenso": {
+      "pred": "Loss",
+      "win": 0.3391,
+      "draw": 0.166,
+      "loss": 0.4949
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Loss",
+        "win": 0.2754,
+        "draw": 0.1195,
+        "loss": 0.6051
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Win",
+        "win": 0.4347,
+        "draw": 0.1722,
+        "loss": 0.3931
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Loss",
+        "win": 0.2977,
+        "draw": 0.1779,
+        "loss": 0.5244
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Win",
+        "win": 0.4923,
+        "draw": 0.1854,
+        "loss": 0.3223
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Loss",
+        "win": 0.2504,
+        "draw": 0.2311,
+        "loss": 0.5185
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Loss",
+        "win": 0.3599,
+        "draw": 0.1146,
+        "loss": 0.5255
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Loss",
+        "win": 0.2633,
+        "draw": 0.1611,
+        "loss": 0.5756
+      }
+    ],
+    "acierto": false
+  },
+  {
+    "equipo1": "Liverpool",
+    "equipo2": "Galatasaray",
+    "fecha": "2026-03-18",
+    "fase": "Octavos",
+    "goles_real": "4–0",
+    "resultado_real": "Win",
+    "consenso": {
+      "pred": "Win",
+      "win": 0.6197,
+      "draw": 0.1443,
+      "loss": 0.236
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Win",
+        "win": 0.5409,
+        "draw": 0.4037,
+        "loss": 0.0554
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Win",
+        "win": 0.7075,
+        "draw": 0.0378,
+        "loss": 0.2547
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Win",
+        "win": 0.571,
+        "draw": 0.0492,
+        "loss": 0.3798
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Win",
+        "win": 0.8596,
+        "draw": 0.0,
+        "loss": 0.1404
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.7115,
+        "draw": 0.1904,
+        "loss": 0.0981
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Loss",
+        "win": 0.3607,
+        "draw": 0.1842,
+        "loss": 0.455
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Win",
+        "win": 0.5863,
+        "draw": 0.1448,
+        "loss": 0.2689
+      }
+    ],
+    "acierto": true
+  },
+  {
+    "equipo1": "Bayern Munchen",
+    "equipo2": "Atlanta",
+    "fecha": "2026-03-18",
+    "fase": "Octavos",
+    "goles_real": "4–1",
+    "resultado_real": "Win",
+    "consenso": {
+      "pred": "Win",
+      "win": 0.7146,
+      "draw": 0.0697,
+      "loss": 0.2157
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Win",
+        "win": 0.8439,
+        "draw": 0.1026,
+        "loss": 0.0534
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Win",
+        "win": 0.7896,
+        "draw": 0.0357,
+        "loss": 0.1747
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Win",
+        "win": 0.6601,
+        "draw": 0.0483,
+        "loss": 0.2917
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Win",
+        "win": 0.8032,
+        "draw": 0.0234,
+        "loss": 0.1734
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.837,
+        "draw": 0.1266,
+        "loss": 0.0363
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Win",
+        "win": 0.6048,
+        "draw": 0.0734,
+        "loss": 0.3218
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Win",
+        "win": 0.4637,
+        "draw": 0.0779,
+        "loss": 0.4585
+      }
+    ],
+    "acierto": true
+  },
+  {
+    "equipo1": "Real Madrid",
+    "equipo2": "Bayern Munchen",
+    "fecha": "2026-04-07",
+    "fase": "Cuartos",
+    "goles_real": "1–2",
+    "resultado_real": "Loss",
+    "consenso": {
+      "pred": "Loss",
+      "win": 0.3634,
+      "draw": 0.1367,
+      "loss": 0.4999
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Loss",
+        "win": 0.4385,
+        "draw": 0.0621,
+        "loss": 0.4994
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Loss",
+        "win": 0.3225,
+        "draw": 0.1854,
+        "loss": 0.4922
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Loss",
+        "win": 0.392,
+        "draw": 0.1729,
+        "loss": 0.4351
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Loss",
+        "win": 0.3832,
+        "draw": 0.1477,
+        "loss": 0.4691
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Loss",
+        "win": 0.1721,
+        "draw": 0.1761,
+        "loss": 0.6518
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Win",
+        "win": 0.5101,
+        "draw": 0.0635,
+        "loss": 0.4264
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Loss",
+        "win": 0.3255,
+        "draw": 0.1492,
+        "loss": 0.5253
+      }
+    ],
+    "acierto": true
+  },
+  {
+    "equipo1": "Sporting CP",
+    "equipo2": "Arsenal",
+    "fecha": "2026-04-07",
+    "fase": "Cuartos",
+    "goles_real": "0–1",
+    "resultado_real": "Loss",
+    "consenso": {
+      "pred": "Loss",
+      "win": 0.4263,
+      "draw": 0.1298,
+      "loss": 0.4439
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Win",
+        "win": 0.4367,
+        "draw": 0.1401,
+        "loss": 0.4232
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Win",
+        "win": 0.472,
+        "draw": 0.1098,
+        "loss": 0.4182
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Win",
+        "win": 0.4503,
+        "draw": 0.1184,
+        "loss": 0.4313
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Loss",
+        "win": 0.4055,
+        "draw": 0.1209,
+        "loss": 0.4736
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Loss",
+        "win": 0.1432,
+        "draw": 0.2313,
+        "loss": 0.6255
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Win",
+        "win": 0.4778,
+        "draw": 0.1037,
+        "loss": 0.4185
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Win",
+        "win": 0.5987,
+        "draw": 0.0845,
+        "loss": 0.3168
+      }
+    ],
+    "acierto": true
+  },
+  {
+    "equipo1": "Paris",
+    "equipo2": "Liverpool",
+    "fecha": "2026-04-08",
+    "fase": "Cuartos",
+    "goles_real": "2–0",
+    "resultado_real": "Win",
+    "consenso": {
+      "pred": "Win",
+      "win": 0.5302,
+      "draw": 0.1408,
+      "loss": 0.329
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Win",
+        "win": 0.4414,
+        "draw": 0.1323,
+        "loss": 0.4263
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Win",
+        "win": 0.48,
+        "draw": 0.1638,
+        "loss": 0.3562
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Win",
+        "win": 0.5437,
+        "draw": 0.134,
+        "loss": 0.3223
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Win",
+        "win": 0.5229,
+        "draw": 0.1387,
+        "loss": 0.3384
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.6174,
+        "draw": 0.1894,
+        "loss": 0.1932
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Win",
+        "win": 0.5826,
+        "draw": 0.0359,
+        "loss": 0.3815
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Win",
+        "win": 0.5233,
+        "draw": 0.1914,
+        "loss": 0.2853
+      }
+    ],
+    "acierto": true
+  },
+  {
+    "equipo1": "Barcelona",
+    "equipo2": "Atleti",
+    "fecha": "2026-04-08",
+    "fase": "Cuartos",
+    "goles_real": "0–2",
+    "resultado_real": "Loss",
+    "consenso": {
+      "pred": "Win",
+      "win": 0.5482,
+      "draw": 0.1042,
+      "loss": 0.3476
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Win",
+        "win": 0.6084,
+        "draw": 0.1245,
+        "loss": 0.2671
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Win",
+        "win": 0.4782,
+        "draw": 0.1259,
+        "loss": 0.3959
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Win",
+        "win": 0.5716,
+        "draw": 0.0715,
+        "loss": 0.3569
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Loss",
+        "win": 0.4286,
+        "draw": 0.1048,
+        "loss": 0.4665
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.5469,
+        "draw": 0.1856,
+        "loss": 0.2676
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Win",
+        "win": 0.6399,
+        "draw": 0.0313,
+        "loss": 0.3288
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Win",
+        "win": 0.5636,
+        "draw": 0.0857,
+        "loss": 0.3507
+      }
+    ],
+    "acierto": false
+  },
+  {
+    "equipo1": "Atleti",
+    "equipo2": "Barcelona",
+    "fecha": "2026-04-14",
+    "fase": "Cuartos",
+    "goles_real": "1–2",
+    "resultado_real": "Loss",
+    "consenso": {
+      "pred": "Win",
+      "win": 0.5325,
+      "draw": 0.1543,
+      "loss": 0.3132
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Loss",
+        "win": 0.4373,
+        "draw": 0.0768,
+        "loss": 0.4859
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Win",
+        "win": 0.4812,
+        "draw": 0.1762,
+        "loss": 0.3426
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Win",
+        "win": 0.4462,
+        "draw": 0.2207,
+        "loss": 0.3331
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Win",
+        "win": 0.5595,
+        "draw": 0.1741,
+        "loss": 0.2664
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.4999,
+        "draw": 0.1924,
+        "loss": 0.3077
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Win",
+        "win": 0.7086,
+        "draw": 0.0359,
+        "loss": 0.2555
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Win",
+        "win": 0.5951,
+        "draw": 0.2038,
+        "loss": 0.2011
+      }
+    ],
+    "acierto": false
+  },
+  {
+    "equipo1": "Liverpool",
+    "equipo2": "Paris",
+    "fecha": "2026-04-14",
+    "fase": "Cuartos",
+    "goles_real": "0–2",
+    "resultado_real": "Loss",
+    "consenso": {
+      "pred": "Loss",
+      "win": 0.3845,
+      "draw": 0.0834,
+      "loss": 0.5321
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Loss",
+        "win": 0.3091,
+        "draw": 0.0,
+        "loss": 0.6909
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Loss",
+        "win": 0.3824,
+        "draw": 0.1119,
+        "loss": 0.5057
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Loss",
+        "win": 0.3918,
+        "draw": 0.0861,
+        "loss": 0.5222
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Loss",
+        "win": 0.4248,
+        "draw": 0.0787,
+        "loss": 0.4965
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Loss",
+        "win": 0.3804,
+        "draw": 0.2241,
+        "loss": 0.3955
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Loss",
+        "win": 0.4852,
+        "draw": 0.0,
+        "loss": 0.5148
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Loss",
+        "win": 0.318,
+        "draw": 0.0831,
+        "loss": 0.5989
+      }
+    ],
+    "acierto": true
+  },
+  {
+    "equipo1": "Arsenal",
+    "equipo2": "Sporting CP",
+    "fecha": "2026-04-15",
+    "fase": "Cuartos",
+    "goles_real": "0–0",
+    "resultado_real": "Draw",
+    "consenso": {
+      "pred": "Win",
+      "win": 0.6542,
+      "draw": 0.0967,
+      "loss": 0.2491
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Win",
+        "win": 0.7152,
+        "draw": 0.1788,
+        "loss": 0.106
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Win",
+        "win": 0.6438,
+        "draw": 0.0357,
+        "loss": 0.3206
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Win",
+        "win": 0.6228,
+        "draw": 0.087,
+        "loss": 0.2902
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Win",
+        "win": 0.685,
+        "draw": 0.0358,
+        "loss": 0.2792
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.7862,
+        "draw": 0.1509,
+        "loss": 0.0629
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Win",
+        "win": 0.5239,
+        "draw": 0.1095,
+        "loss": 0.3666
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Win",
+        "win": 0.6027,
+        "draw": 0.0792,
+        "loss": 0.3181
+      }
+    ],
+    "acierto": false
+  },
+  {
+    "equipo1": "Bayern Munchen",
+    "equipo2": "Real Madrid",
+    "fecha": "2026-04-15",
+    "fase": "Cuartos",
+    "goles_real": "4–3",
+    "resultado_real": "Win",
+    "consenso": {
+      "pred": "Win",
+      "win": 0.5149,
+      "draw": 0.0915,
+      "loss": 0.3936
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Win",
+        "win": 0.5984,
+        "draw": 0.0728,
+        "loss": 0.3288
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Loss",
+        "win": 0.4091,
+        "draw": 0.1253,
+        "loss": 0.4656
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Win",
+        "win": 0.4491,
+        "draw": 0.1356,
+        "loss": 0.4152
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Loss",
+        "win": 0.4131,
+        "draw": 0.1153,
+        "loss": 0.4716
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.8363,
+        "draw": 0.1007,
+        "loss": 0.0631
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Loss",
+        "win": 0.4852,
+        "draw": 0.0,
+        "loss": 0.5148
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Loss",
+        "win": 0.4131,
+        "draw": 0.0911,
+        "loss": 0.4958
+      }
+    ],
+    "acierto": true
+  },
+  {
+    "equipo1": "Paris",
+    "equipo2": "Bayern Munchen",
+    "fecha": "2026-04-28",
+    "fase": "Semifinal",
+    "goles_real": "5–4",
+    "resultado_real": "Win",
+    "consenso": {
+      "pred": "Loss",
+      "win": 0.3349,
+      "draw": 0.2396,
+      "loss": 0.4255
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Draw",
+        "win": 0.2176,
+        "draw": 0.5497,
+        "loss": 0.2327
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Loss",
+        "win": 0.3155,
+        "draw": 0.1872,
+        "loss": 0.4972
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Loss",
+        "win": 0.1525,
+        "draw": 0.2619,
+        "loss": 0.5857
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Win",
+        "win": 0.4606,
+        "draw": 0.1404,
+        "loss": 0.399
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Loss",
+        "win": 0.366,
+        "draw": 0.2118,
+        "loss": 0.4222
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Loss",
+        "win": 0.3743,
+        "draw": 0.1486,
+        "loss": 0.4772
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Win",
+        "win": 0.4577,
+        "draw": 0.1775,
+        "loss": 0.3649
+      }
+    ],
+    "acierto": false
+  },
+  {
+    "equipo1": "Atleti",
+    "equipo2": "Arsenal",
+    "fecha": "2026-04-29",
+    "fase": "Semifinal",
+    "goles_real": "1–1",
+    "resultado_real": "Draw",
+    "consenso": {
+      "pred": "Loss",
+      "win": 0.3576,
+      "draw": 0.2288,
+      "loss": 0.4135
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Draw",
+        "win": 0.2366,
+        "draw": 0.6908,
+        "loss": 0.0726
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Win",
+        "win": 0.4724,
+        "draw": 0.1118,
+        "loss": 0.4157
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Loss",
+        "win": 0.3585,
+        "draw": 0.1705,
+        "loss": 0.471
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Win",
+        "win": 0.4943,
+        "draw": 0.1647,
+        "loss": 0.3411
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Loss",
+        "win": 0.1,
+        "draw": 0.1658,
+        "loss": 0.7342
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Loss",
+        "win": 0.3743,
+        "draw": 0.1486,
+        "loss": 0.4772
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Win",
+        "win": 0.4674,
+        "draw": 0.1496,
+        "loss": 0.3831
+      }
+    ],
+    "acierto": false
+  },
+  {
+    "equipo1": "Arsenal",
+    "equipo2": "Atleti",
+    "fecha": "2026-05-05",
+    "fase": "Semifinal",
+    "goles_real": "1–0",
+    "resultado_real": "Win",
+    "consenso": {
+      "pred": "Loss",
+      "win": 0.4395,
+      "draw": 0.0875,
+      "loss": 0.473
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Loss",
+        "win": 0.3312,
+        "draw": 0.0663,
+        "loss": 0.6025
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Loss",
+        "win": 0.4069,
+        "draw": 0.1149,
+        "loss": 0.4782
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Loss",
+        "win": 0.3585,
+        "draw": 0.0581,
+        "loss": 0.5834
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Loss",
+        "win": 0.4244,
+        "draw": 0.0873,
+        "loss": 0.4883
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.8763,
+        "draw": 0.0881,
+        "loss": 0.0356
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Loss",
+        "win": 0.342,
+        "draw": 0.1146,
+        "loss": 0.5434
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Loss",
+        "win": 0.3371,
+        "draw": 0.0831,
+        "loss": 0.5798
+      }
+    ],
+    "acierto": false
+  },
+  {
+    "equipo1": "Bayern Munchen",
+    "equipo2": "Paris",
+    "fecha": "2026-05-06",
+    "fase": "Semifinal",
+    "goles_real": "1–1",
+    "resultado_real": "Draw",
+    "consenso": {
+      "pred": "Loss",
+      "win": 0.4129,
+      "draw": 0.0931,
+      "loss": 0.494
+    },
+    "modelos": [
+      {
+        "modelo": "Logistic Regression",
+        "pred": "Loss",
+        "win": 0.3128,
+        "draw": 0.0624,
+        "loss": 0.6248
+      },
+      {
+        "modelo": "XGBoost",
+        "pred": "Win",
+        "win": 0.452,
+        "draw": 0.0983,
+        "loss": 0.4497
+      },
+      {
+        "modelo": "Gradient Boosting",
+        "pred": "Loss",
+        "win": 0.3803,
+        "draw": 0.0864,
+        "loss": 0.5333
+      },
+      {
+        "modelo": "Random Forest",
+        "pred": "Loss",
+        "win": 0.443,
+        "draw": 0.0349,
+        "loss": 0.5221
+      },
+      {
+        "modelo": "Dixon-Coles",
+        "pred": "Win",
+        "win": 0.653,
+        "draw": 0.1709,
+        "loss": 0.1761
+      },
+      {
+        "modelo": "SVM",
+        "pred": "Loss",
+        "win": 0.342,
+        "draw": 0.1146,
+        "loss": 0.5434
+      },
+      {
+        "modelo": "KNN",
+        "pred": "Loss",
+        "win": 0.307,
+        "draw": 0.0845,
+        "loss": 0.6085
+      }
+    ],
+    "acierto": false
+  }
+]

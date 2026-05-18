@@ -31,12 +31,14 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import Field, Session, SQLModel, create_engine, select, func
 
-from knime_workflow_converter import main as run_pipeline, predecir_partido
-from predecir_v2 import predecir_partido_v2
+from ml.knime_workflow_converter import main as run_pipeline, predecir_partido
+from ml.predecir_v2 import predecir_partido_v2
 
-_DEFAULT_DATASET = Path(__file__).parent / "creando_dataset_modificado.xlsx"
+# Paths relativos al proyecto raíz (un nivel arriba de api/)
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_DEFAULT_DATASET = _PROJECT_ROOT / "data" / "creando_dataset_modificado.xlsx"
 DATASET = os.getenv("DATASET_PATH", str(_DEFAULT_DATASET))
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./futbol.db")
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{_PROJECT_ROOT / 'data' / 'futbol.db'}")
 
 engine = create_engine(DATABASE_URL)
 
@@ -197,7 +199,7 @@ app.add_middleware(
 )
 
 # Servir dashboard estático desde /static y / (raíz redirige a index.html)
-_STATIC_DIR = Path(__file__).parent / "static"
+_STATIC_DIR = _PROJECT_ROOT / "static"
 if _STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 
@@ -535,10 +537,14 @@ def metricas_evaluacion(evaluacion_id: int, session: Session = Depends(get_sessi
     ev = session.get(Evaluacion, evaluacion_id)
     if not ev or not ev.activo:
         raise HTTPException(status_code=404, detail="Evaluación no encontrada")
+    n_partidos = session.exec(
+        select(func.count(Partido.id)).where(Partido.activo == True)
+    ).one()
     return {
         "evaluacion_id": evaluacion_id,
-        "test": json.loads(ev.resultados),       # accuracy + F1 macro en test único
-        "cv": json.loads(ev.cv_resultados),       # CV walk-forward
+        "n_partidos": n_partidos,                  # total usado en el walk-forward
+        "test": json.loads(ev.resultados),         # accuracy + F1 macro en test único
+        "cv": json.loads(ev.cv_resultados),        # CV walk-forward
     }
 
 
@@ -548,20 +554,6 @@ def feature_importance(evaluacion_id: int, top: int = 15, session: Session = Dep
     results = _get_or_run_pipeline(evaluacion_id, session)
     fi = results.get("feature_importance", []) or []
     return {"top_features": fi[:top], "total": len(fi)}
-
-
-@app.get("/api/record")
-def record_publico(session: Session = Depends(get_session)):
-    """Predicciones del test cronológico de la evaluación más reciente (público)."""
-    evals = session.exec(select(Evaluacion).where(Evaluacion.activo == True)).all()
-    if not evals:
-        return {"predicciones": []}
-    ev = max(evals, key=lambda e: e.id)
-    results = _get_or_run_pipeline(ev.id, session)
-    pred_df = results.get("predictions")
-    if pred_df is None:
-        return {"predicciones": []}
-    return {"predicciones": json.loads(pred_df.to_json(orient="records"))}
 
 
 @app.get("/api/evaluaciones/{evaluacion_id}/predicciones-test")
@@ -752,8 +744,8 @@ def stats_track_record(session: Session = Depends(get_session)):
 # Featured Pick del Día (admin lo configura, público lo ve)
 # ---------------------------------------------------------------------------
 
-FEATURED_PICK_FILE  = Path(__file__).parent / "featured_pick.json"
-RECORD_HISTORICO_FILE = Path(__file__).parent / "record_historico.json"
+FEATURED_PICK_FILE  = _PROJECT_ROOT / "data" / "featured_pick.json"
+RECORD_HISTORICO_FILE = _PROJECT_ROOT / "data" / "record_historico.json"
 
 # Estado del generador de record: "idle" | "running" | "done" | "error:<msg>"
 _record_status: dict = {"status": "idle", "progreso": 0, "total": 0}

@@ -33,14 +33,13 @@ if sys.stdout.encoding != 'utf-8':
 else:
     sys.stdout.reconfigure(line_buffering=True)
 
-ROOT    = Path(__file__).parent.parent
-DATASET = ROOT / "data" / "creando_dataset_modificado.xlsx"
-PRED_CSV = ROOT / "data" / "track_record_predictions.csv"
-PREDICTIONS_SIMPLE_CSV = ROOT / "data" / "predictions.csv"
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DATASET = _PROJECT_ROOT / "data" / "creando_dataset_modificado.xlsx"
+PRED_CSV = _PROJECT_ROOT / "data" / "track_record_predictions.csv"
+PREDICTIONS_SIMPLE_CSV = _PROJECT_ROOT / "data" / "predictions.csv"
 
-# Importar módulos desde la raíz del proyecto
-sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(ROOT / "scripts"))
+# Asegurar import de paquetes ml/, scraper/ desde el root
+sys.path.insert(0, str(_PROJECT_ROOT))
 
 
 PRED_HEADERS = [
@@ -89,8 +88,8 @@ def scrape_subprocess(url, headless=True):
     JSON con la info del partido. Aislamiento total de Chromium."""
     code = (
         "import json, sys\n"
-        "sys.path.insert(0, r'" + str(ROOT) + "')\n"
-        "from scraper_uefa import obtener_info_partido\n"
+        "sys.path.insert(0, r'" + str(_PROJECT_ROOT) + "')\n"
+        "from scraper.scraper_uefa import obtener_info_partido\n"
         f"info = obtener_info_partido({url!r}, headless={headless})\n"
         "print('<<<JSON>>>' + json.dumps({\n"
         "    'url': info['url'], 'match_id': info['match_id'],\n"
@@ -247,9 +246,9 @@ def guardar_prediccion_simple(fila):
 
 
 def procesar_fecha(fecha, fase='Liga', n_runs=20, headless=True):
-    from scraper_uefa import listar_partidos_por_fecha
-    from knime_workflow_converter import main as entrenar_main, predecir_partido
-    import agregar_partido as agp
+    from scraper.scraper_uefa import listar_partidos_por_fecha
+    from ml.knime_workflow_converter import main as entrenar_main, predecir_partido
+    import agregar_partido as agp  # mismo folder scripts/
 
     print("=" * 60)
     print(f"  PREDECIR + AGREGAR — fecha {fecha}  |  fase {fase}")

@@ -141,6 +141,74 @@
     @media(min-width:1024px) { #elo-section:not(.hidden) { grid-template-columns:repeat(2,1fr); } }
 
     input:focus, select:focus { outline:none; border-color:var(--pos)!important; }
+
+    /* ═══ MERCADOS + COMBINADA ═════════════════════════════════════════ */
+    .market-row {
+      display:grid; grid-template-columns:1fr 60px 32px;
+      align-items:center; gap:10px; padding:8px 10px;
+      background:rgba(19,24,38,.5); border:1px solid var(--line);
+      border-radius:8px; margin-bottom:6px;
+    }
+    .market-row .name { font-size:13px; }
+    .market-row .pct { font-family:'JetBrains Mono',monospace; font-size:13px;
+      text-align:right; font-weight:600; }
+    .market-row .add-btn {
+      width:28px; height:28px; border-radius:6px;
+      background:rgba(0,229,160,.1); color:var(--pos);
+      border:1px solid rgba(0,229,160,.3); cursor:pointer;
+      font-size:18px; line-height:1; transition:all .15s;
+    }
+    .market-row .add-btn:hover { background:var(--pos); color:#00130C; }
+    .market-row.added .add-btn { background:var(--pos); color:#00130C; }
+    .market-group { margin-bottom:14px; }
+    .market-group h4 {
+      font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+      color:#97A0B5; font-family:'JetBrains Mono',monospace;
+      margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid var(--line);
+    }
+    .market-row .bar-bg {
+      height:4px; background:rgba(255,255,255,.05); border-radius:2px;
+      grid-column:1/3; margin-top:4px; overflow:hidden;
+    }
+    .market-row .bar-fill { height:100%; background:var(--pos); transition:width .3s; }
+    .market-row.lo .pct { color:var(--red); } .market-row.lo .bar-fill { background:var(--red); }
+    .market-row.md .pct { color:var(--amber); } .market-row.md .bar-fill { background:var(--amber); }
+    .market-row.hi .pct { color:var(--pos); } .market-row.hi .bar-fill { background:var(--pos); }
+
+    /* Combinada cart */
+    #combinada-cart { position:fixed; bottom:16px; right:16px; z-index:30;
+      width:340px; max-height:80vh; display:flex; flex-direction:column; }
+    #cart-toggle {
+      background:var(--pos); color:#00130C; font-weight:700;
+      padding:10px 16px; border-radius:12px; cursor:pointer;
+      box-shadow:0 8px 24px rgba(0,229,160,.35); display:flex; align-items:center; gap:8px;
+      border:none; font-family:'Space Grotesk',sans-serif; font-size:14px;
+    }
+    #cart-panel {
+      background:rgba(12,16,24,.96); backdrop-filter:blur(10px);
+      border:1px solid var(--lb); border-radius:14px;
+      margin-top:8px; padding:14px; overflow-y:auto; max-height:calc(80vh - 60px);
+    }
+    .leg-row {
+      display:grid; grid-template-columns:1fr 60px 20px;
+      gap:8px; align-items:center; padding:8px;
+      background:rgba(19,24,38,.6); border:1px solid var(--line);
+      border-radius:6px; margin-bottom:6px;
+    }
+    .leg-row .leg-meta { font-size:11px; color:#97A0B5; font-family:'JetBrains Mono',monospace; }
+    .leg-row input { width:55px; padding:3px 5px; background:rgba(7,9,15,.6);
+      border:1px solid var(--line); border-radius:4px; color:#E6EAF2;
+      font-family:'JetBrains Mono',monospace; font-size:11px; text-align:right; }
+    .leg-row .remove-btn { width:18px; height:18px; border:none; background:transparent;
+      color:var(--red); cursor:pointer; font-size:14px; line-height:1; }
+    .cart-summary { padding:10px; background:rgba(0,229,160,.05);
+      border:1px solid rgba(0,229,160,.2); border-radius:8px; margin-top:8px; }
+    .cart-summary .row { display:flex; justify-content:space-between; font-size:12px; margin:3px 0; }
+    .cart-summary .row .val { font-family:'JetBrains Mono',monospace; font-weight:600; }
+    .cart-warning {
+      padding:8px; background:rgba(255,182,39,.08); border:1px solid rgba(255,182,39,.25);
+      border-radius:6px; font-size:11px; color:var(--amber); margin-top:8px;
+    }
   </style>
 </head>
 <body class="bg-surface-900 text-[#E6EAF2] min-h-screen antialiased font-sans">
@@ -503,6 +571,51 @@
         </div>
 
       </div>
+
+      <!-- Panel completo de mercados (debajo del card principal del Pick del Día) -->
+      <div id="mercados-wrap" class="hidden space-y-4 mt-6">
+        <div class="flex items-center gap-3">
+          <div class="h-px flex-1 bg-[var(--line)]"></div>
+          <span class="font-mono text-[10px] uppercase tracking-widest text-[#5A6478]">Mercados de apuestas</span>
+          <div class="h-px flex-1 bg-[var(--line)]"></div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="rounded-xl p-4 border border-[var(--lb)] space-y-3" style="background:rgba(19,24,38,.7)">
+            <h4 class="text-xs font-semibold font-mono uppercase tracking-wider text-[#97A0B5]">Ambos marcan &middot; DNB &middot; Doble opc.</h4>
+            <div id="m-btts" class="space-y-1.5"></div>
+            <div class="h-px bg-[var(--line)]"></div>
+            <div id="m-dnb" class="space-y-1.5"></div>
+            <div class="h-px bg-[var(--line)]"></div>
+            <div id="m-doble" class="space-y-1.5"></div>
+          </div>
+          <div class="rounded-xl p-4 border border-[var(--lb)] space-y-3" style="background:rgba(19,24,38,.7)">
+            <h4 class="text-xs font-semibold font-mono uppercase tracking-wider text-[#97A0B5]">Total de goles</h4>
+            <div id="m-totalgoles" class="space-y-1.5"></div>
+            <div class="h-px bg-[var(--line)]"></div>
+            <h4 class="text-xs font-semibold font-mono uppercase tracking-wider text-[#97A0B5]">Goles por equipo</h4>
+            <div id="m-golesequipos" class="space-y-1.5"></div>
+          </div>
+          <div class="rounded-xl p-4 border border-[var(--lb)] space-y-3" style="background:rgba(19,24,38,.7)">
+            <h4 class="text-xs font-semibold font-mono uppercase tracking-wider text-[#97A0B5]">H&#xE1;ndicap</h4>
+            <div id="m-handicap" class="space-y-1.5"></div>
+            <div class="h-px bg-[var(--line)]"></div>
+            <h4 class="text-xs font-semibold font-mono uppercase tracking-wider text-[#97A0B5]">Victoria + ambos marcan</h4>
+            <div id="m-winbtts" class="space-y-1.5"></div>
+            <div class="h-px bg-[var(--line)]"></div>
+            <div id="m-ambas-mitades" class="space-y-1.5"></div>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="rounded-xl p-4 border border-[var(--lb)]" style="background:rgba(19,24,38,.7)">
+            <h4 class="text-xs font-semibold font-mono uppercase tracking-wider text-[#97A0B5] mb-3">Resultado correcto</h4>
+            <div id="m-scores" class="grid grid-cols-2 gap-1.5"></div>
+          </div>
+          <div class="rounded-xl p-4 border border-[var(--lb)]" style="background:rgba(19,24,38,.7)">
+            <h4 class="text-xs font-semibold font-mono uppercase tracking-wider text-[#97A0B5] mb-3">HT / FT</h4>
+            <div id="m-htft" class="grid grid-cols-3 gap-1.5"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -523,11 +636,7 @@
   </section><div id="r-e2"></div><div id="r-elo1"></div><div id="r-elo2"></div>
     <div id="r-consenso-pred"></div><div id="r-diff"></div><div id="r-h2h"></div>
     <div id="r-forma1"></div><div id="r-forma2"></div><canvas id="chart-consenso"></canvas>
-    <tbody id="tbl-modelos"></tbody><div id="goles"></div><div id="mercados-wrap">
-    <div id="m-btts"></div><div id="m-dnb"></div><div id="m-doble"></div>
-    <div id="m-totalgoles"></div><div id="m-golesequipos"></div><div id="m-handicap"></div>
-    <div id="m-winbtts"></div><div id="m-ambas-mitades"></div>
-    <div id="m-scores"></div><div id="m-htft"></div></div></div>
+    <tbody id="tbl-modelos"></tbody><div id="goles"></div>
     <select id="sel-e1"></select><select id="sel-e2"></select>
     <select id="sel-fase"></select><input id="inp-runs"/>
     <form id="form-predecir"></form>
@@ -554,16 +663,17 @@
             <th class="text-left py-2 px-2">Local</th>
             <th class="text-left py-2 px-2">Visitante</th>
             <th class="text-center py-2 px-2">Real</th>
-            <th class="text-center py-2 px-2">RF</th>
-            <th class="text-center py-2 px-2">GB</th>
-            <th class="text-center py-2 px-2">LR</th>
-            <th class="text-center py-2 px-2">SVM</th>
-            <th class="text-center py-2 px-2">XGB</th>
-            <th class="text-center py-2 px-2">KNN</th>
+            <th id="th-rec-rf"  class="text-center py-2 px-2">RF</th>
+            <th id="th-rec-gb"  class="text-center py-2 px-2">GB</th>
+            <th id="th-rec-lr"  class="text-center py-2 px-2">LR</th>
+            <th id="th-rec-svm" class="text-center py-2 px-2">SVM</th>
+            <th id="th-rec-xgb" class="text-center py-2 px-2">XGB</th>
+            <th id="th-rec-knn" class="text-center py-2 px-2">KNN</th>
+            <th id="th-rec-dc"  class="text-center py-2 px-2">DC</th>
           </tr>
         </thead>
         <tbody id="record-body">
-          <tr><td colspan="9" class="text-center py-6 text-[#5A6478] text-xs">Cargando...</td></tr>
+          <tr><td colspan="10" class="text-center py-6 text-[#5A6478] text-xs">Cargando...</td></tr>
         </tbody>
       </table>
     </div>
@@ -938,6 +1048,13 @@ function renderFeaturedPick(pick) {
   } else {
     histWrap.classList.add('hidden');
   }
+
+  // Panel completo de mercados (BTTS sí/no, DNB, O/U, hándicap, HT/FT, etc.)
+  if (pick.mercados) {
+    renderMercados(pick.mercados, pick.equipo1, pick.equipo2);
+  } else {
+    document.getElementById('mercados-wrap').classList.add('hidden');
+  }
 }
 
 async function eliminarPick() {
@@ -1270,13 +1387,46 @@ const MODELO_KEYS = [
   'Random Forest', 'Gradient Boosting', 'Logistic Regression', 'SVM', 'XGBoost', 'KNN'
 ];
 
+const _MODS_REC = [
+  { key: 'Random Forest',       short: 'RF',  id: 'th-rec-rf'  },
+  { key: 'Gradient Boosting',   short: 'GB',  id: 'th-rec-gb'  },
+  { key: 'Logistic Regression', short: 'LR',  id: 'th-rec-lr'  },
+  { key: 'SVM',                 short: 'SVM', id: 'th-rec-svm' },
+  { key: 'XGBoost',             short: 'XGB', id: 'th-rec-xgb' },
+  { key: 'KNN',                 short: 'KNN', id: 'th-rec-knn' },
+  { key: 'Dixon-Coles',         short: 'DC',  id: 'th-rec-dc'  },
+];
+const _colorByAccRec = acc =>
+  acc >= 0.65 ? 'var(--pos)' : acc >= 0.5 ? 'var(--amber)' : 'var(--red)';
+
+// Cuenta cuántos aciertos tuvo cada modelo en el record actual y lo pone en el header.
+function _updateRecHeaders(rows, tipo) {
+  const total = rows.filter(r => (r.resultado_real || r.Resultado_Real) && !r.error).length;
+  for (const m of _MODS_REC) {
+    const th = document.getElementById(m.id);
+    if (!th) continue;
+    if (!total) { th.textContent = m.short; continue; }
+    const aciertos = rows.filter(r => {
+      const real = r.resultado_real || r.Resultado_Real;
+      if (!real) return false;
+      const pred = tipo === 'v2_honesto'
+        ? (r.modelos || []).find(x => x.modelo === m.key)?.pred
+        : r[m.key];
+      return pred === real;
+    }).length;
+    const acc = aciertos / total;
+    th.innerHTML = `${m.short} <span class="font-mono ml-1" style="color:${_colorByAccRec(acc)}">${(acc*100).toFixed(1)}%</span>`;
+  }
+}
+
 async function renderRecordPublico() {
   const tbody = document.getElementById('record-body');
   const badge = document.getElementById('record-badge');
   try {
     const data = await fetch(`${API_BASE}/api/record`).then(r => r.json());
-    const rows = data.predicciones || [];
+    const rows = (data.predicciones || []).slice().reverse();
     const tipo  = data.tipo || 'sin_datos';
+    _updateRecHeaders(rows, tipo);
 
     if (badge) {
       if (tipo === 'v2_honesto') {
@@ -1289,7 +1439,7 @@ async function renderRecordPublico() {
     }
 
     if (rows.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-[#5A6478] text-xs">Sin datos — generá el record desde el panel admin.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" class="text-center py-6 text-[#5A6478] text-xs">Sin datos — generá el record desde el panel admin.</td></tr>`;
       return;
     }
 
@@ -1301,7 +1451,7 @@ async function renderRecordPublico() {
         if (r.error) return `<tr class="border-b border-[var(--line)]">
           <td class="py-2 px-2 text-sm">${r.equipo1}</td>
           <td class="py-2 px-2 text-sm">${r.equipo2}</td>
-          <td colspan="7" class="py-2 px-2 text-xs text-[#5A6478] font-mono">Error: ${r.error}</td></tr>`;
+          <td colspan="8" class="py-2 px-2 text-xs text-[#5A6478] font-mono">Error: ${r.error}</td></tr>`;
 
         const real = r.resultado_real;
         const cReal = colC[real] || '#E6EAF2';
@@ -1310,7 +1460,7 @@ async function renderRecordPublico() {
 
         const modMap = {};
         (r.modelos || []).forEach(m => { modMap[m.modelo] = m; });
-        const MODS = ['Random Forest','Gradient Boosting','Logistic Regression','SVM','XGBoost','KNN'];
+        const MODS = ['Random Forest','Gradient Boosting','Logistic Regression','SVM','XGBoost','KNN','Dixon-Coles'];
 
         const mCells = MODS.map(name => {
           const m = modMap[name];
@@ -1363,7 +1513,7 @@ async function renderRecordPublico() {
         ${colRes(r.Resultado_Real, r['KNN'],                 'KNN',                 r)}
       </tr>`).join('');
   } catch(err) {
-    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-[#5A6478] text-xs">Error: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-[#5A6478] text-xs">Error: ${err.message}</td></tr>`;
   }
 }
 

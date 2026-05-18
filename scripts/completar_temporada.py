@@ -12,9 +12,10 @@ import os
 from pathlib import Path
 import pandas as pd
 
-ROOT    = Path(__file__).parent.parent
-PREDICT = ROOT / "scripts" / "predecir_y_agregar.py"
-DATASET = ROOT / "data" / "creando_dataset_modificado.xlsx"
+BASE = Path(__file__).resolve().parent
+_PROJECT_ROOT = BASE.parent
+PREDICT = BASE / "predecir_y_agregar.py"
+DATASET = _PROJECT_ROOT / "data" / "creando_dataset_modificado.xlsx"
 
 # Calendario UCL 2025-26 (lo que falta a partir del estado actual)
 FECHAS = [

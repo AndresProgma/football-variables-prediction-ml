@@ -26,6 +26,7 @@ import re
 import subprocess
 import unicodedata
 import sys
+from pathlib import Path
 
 # Forzar UTF-8 y line-buffering en la terminal (para ver progreso en vivo)
 if sys.stdout.encoding != 'utf-8':
@@ -35,7 +36,10 @@ else:
 if sys.stdin.encoding != 'utf-8':
     sys.stdin.reconfigure(encoding='utf-8')
 
-DATASET = str(Path(__file__).parent.parent / "data" / "creando_dataset_modificado.xlsx")
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_PROJECT_ROOT))
+
+DATASET = str(_PROJECT_ROOT / "data" / "creando_dataset_modificado.xlsx")
 
 SECTION_HEADERS = {
     'Estadísticas clave', 'Ataque', 'Distribución',
@@ -304,7 +308,7 @@ def modo_manual():
 
 
 def modo_url(url, fase, headless=True, auto_confirmar=False, debug=False):
-    from scraper_uefa import obtener_info_partido
+    from scraper.scraper_uefa import obtener_info_partido
 
     print("=" * 55)
     print("  AGREGAR PARTIDO DESDE URL")
@@ -352,7 +356,7 @@ def modo_fecha(fecha, fase, headless=True, auto_confirmar=False, debug=False):
     para cada URL. Cada partido = un proceso Python fresco, así no se acumulan
     recursos de Chromium y el proceso largo nunca se cuelga.
     """
-    from scraper_uefa import listar_partidos_por_fecha
+    from scraper.scraper_uefa import listar_partidos_por_fecha
 
     print("=" * 55)
     print(f"  PROCESAR PARTIDOS DEL {fecha}")

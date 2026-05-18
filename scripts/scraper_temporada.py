@@ -15,9 +15,10 @@ import os
 from pathlib import Path
 import pandas as pd
 
-ROOT    = Path(__file__).parent.parent
-AGREGAR = ROOT / "scripts" / "agregar_partido.py"
-DATASET = ROOT / "data" / "creando_dataset_modificado.xlsx"
+BASE = Path(__file__).resolve().parent
+_PROJECT_ROOT = BASE.parent
+AGREGAR = BASE / "agregar_partido.py"
+DATASET = _PROJECT_ROOT / "data" / "creando_dataset_modificado.xlsx"
 
 # Calendario UCL 2024-25 (primer año con nuevo formato Liga)
 UCL_2024_25 = [

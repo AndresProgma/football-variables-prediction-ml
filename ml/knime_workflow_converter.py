@@ -37,7 +37,24 @@ from sklearn.pipeline import Pipeline
 from sklearn.calibration import CalibratedClassifierCV
 from xgboost import XGBClassifier, XGBRegressor
 
+from ml.dixon_coles import DixonColesModel
+
 K_FEATURES = 20  # top features según ANOVA-F dentro de cada fold (evita curse of dimensionality)
+
+
+def _dc_proba_in_class_order(dc, equipo1, equipo2, is_home_e1, classes):
+    """Reordena las probas de DC ([W, D, L]) al orden de `classes` del LabelEncoder
+    (típicamente ['Draw', 'Loss', 'Win'])."""
+    p = dc.predict_proba(equipo1, equipo2, is_home_e1=is_home_e1)
+    out = np.zeros(len(classes))
+    for i, c in enumerate(classes):
+        if c == 'Win':
+            out[i] = p[0]
+        elif c == 'Draw':
+            out[i] = p[1]
+        elif c == 'Loss':
+            out[i] = p[2]
+    return out
 
 # Configuración v14 (mejor ensemble en walk-forward CV con 189 partidos):
 #   - features extra (xG sintético + UEFA coef) ya integrados en compute_*
@@ -46,7 +63,7 @@ K_FEATURES = 20  # top features según ANOVA-F dentro de cada fold (evita curse 
 #     → probabilidades calibradas: P(Win)=70% ≈ frecuencia real de aciertos 70%
 #   - K=20 features (de ~160) → óptimo en CV walk-forward, evita curse-of-dim
 CALIBRAR_DEFECTO = True
-DRAW_WEIGHT_BOOST = 1.5   # peso de la clase Draw
+DRAW_WEIGHT_BOOST = 1.5   # peso de la clase Draw (probado 2.0/2.5: solo +0.05-0.5p F1, ruido)
 
 
 def _class_weight():
@@ -226,6 +243,7 @@ XG_W_SHOTS = 0.05   # disparos totales
 XG_W_SOT   = 0.20   # disparos a puerta
 XG_W_CC    = 0.55   # oportunidades claras
 XG_WINDOW  = 5      # promedio de últimos N partidos (más receptivo a forma actual)
+MARKET_WINDOW = 5   # rolling de stats específicas por mercado (corners, tarjetas, etc.)
 
 
 def _xg_partido(shots, sot, clear):
@@ -369,6 +387,115 @@ def compute_form_features(df):
     return df, historial
 
 
+def compute_market_rolling_features(df):
+    """Rolling pre-partido de stats específicas por mercado (corners, tarjetas,
+    disparos a puerta, faltas) por equipo. Sin leakage temporal.
+
+    Agrega features por equipo:
+      Corners_<E>_for_ult5         corners hechos por el equipo en últ. 5
+      Corners_<E>_against_ult5     corners concedidos
+      Tarjetas_<E>_ult5            amarillas + rojas recibidas
+      Disparos_apuerta_<E>_for_ult5
+      Disparos_apuerta_<E>_against_ult5
+      Faltas_<E>_ult5
+
+    Y diffs E1−E2 sobre las for_*:
+      Diff_Corners_for, Diff_Tarjetas, Diff_Disparos_apuerta, Diff_Faltas
+
+    Si un equipo no tiene historial previo, la feature queda NaN (la imputa
+    handle_missing_values luego con la media de la columna)."""
+    print("🎲 Calculando features rolling de mercado (corners/tarjetas/disparos/faltas)...")
+    df = df.copy()
+    historial = {}  # equipo -> list of dicts con stats por partido
+
+    base_cols = [
+        'Corners_E1_for_ult5', 'Corners_E1_against_ult5',
+        'Corners_E2_for_ult5', 'Corners_E2_against_ult5',
+        'Tarjetas_E1_ult5', 'Tarjetas_E2_ult5',
+        'Disparos_apuerta_E1_for_ult5', 'Disparos_apuerta_E1_against_ult5',
+        'Disparos_apuerta_E2_for_ult5', 'Disparos_apuerta_E2_against_ult5',
+        'Faltas_E1_ult5', 'Faltas_E2_ult5',
+        'Diff_Corners_for', 'Diff_Tarjetas',
+        'Diff_Disparos_apuerta', 'Diff_Faltas',
+    ]
+    rows = {c: [] for c in base_cols}
+
+    def roll(hist, key):
+        if not hist:
+            return np.nan
+        last = hist[-MARKET_WINDOW:]
+        vals = [h[key] for h in last if pd.notna(h[key])]
+        return float(np.mean(vals)) if vals else np.nan
+
+    def num(row, c):
+        v = row.get(c)
+        return float(v) if pd.notna(v) else np.nan
+
+    def safe_diff(a, b):
+        return float(a - b) if pd.notna(a) and pd.notna(b) else np.nan
+
+    for _, row in df.iterrows():
+        e1, e2 = row['Equipo1'], row['Equipo2']
+        h1 = historial.get(e1, [])
+        h2 = historial.get(e2, [])
+
+        c1f, c1a = roll(h1, 'corners_for'), roll(h1, 'corners_against')
+        c2f, c2a = roll(h2, 'corners_for'), roll(h2, 'corners_against')
+        t1, t2 = roll(h1, 'tarjetas'), roll(h2, 'tarjetas')
+        d1f, d1a = roll(h1, 'disparos_apuerta_for'), roll(h1, 'disparos_apuerta_against')
+        d2f, d2a = roll(h2, 'disparos_apuerta_for'), roll(h2, 'disparos_apuerta_against')
+        f1, f2 = roll(h1, 'faltas'), roll(h2, 'faltas')
+
+        rows['Corners_E1_for_ult5'].append(c1f)
+        rows['Corners_E1_against_ult5'].append(c1a)
+        rows['Corners_E2_for_ult5'].append(c2f)
+        rows['Corners_E2_against_ult5'].append(c2a)
+        rows['Tarjetas_E1_ult5'].append(t1)
+        rows['Tarjetas_E2_ult5'].append(t2)
+        rows['Disparos_apuerta_E1_for_ult5'].append(d1f)
+        rows['Disparos_apuerta_E1_against_ult5'].append(d1a)
+        rows['Disparos_apuerta_E2_for_ult5'].append(d2f)
+        rows['Disparos_apuerta_E2_against_ult5'].append(d2a)
+        rows['Faltas_E1_ult5'].append(f1)
+        rows['Faltas_E2_ult5'].append(f2)
+        rows['Diff_Corners_for'].append(safe_diff(c1f, c2f))
+        rows['Diff_Tarjetas'].append(safe_diff(t1, t2))
+        rows['Diff_Disparos_apuerta'].append(safe_diff(d1f, d2f))
+        rows['Diff_Faltas'].append(safe_diff(f1, f2))
+
+        # Solo actualizar historial si el partido se jugó (tiene goles).
+        if pd.notna(row.get('EQUIPO1_GOLES')) and pd.notna(row.get('EQUIPO2_GOLES')):
+            ta1 = num(row, 'Tarjetas_amarillas_E1')
+            tr1 = num(row, 'Tarjetas_rojas_E1')
+            ta2 = num(row, 'Tarjetas_amarillas_E2')
+            tr2 = num(row, 'Tarjetas_rojas_E2')
+            tarj_e1 = (ta1 if pd.notna(ta1) else 0) + (tr1 if pd.notna(tr1) else 0)
+            tarj_e2 = (ta2 if pd.notna(ta2) else 0) + (tr2 if pd.notna(tr2) else 0)
+
+            historial.setdefault(e1, []).append({
+                'corners_for':     num(row, 'Saques_de_esquina_sacados_E1'),
+                'corners_against': num(row, 'Saques_de_esquina_sacados_E2'),
+                'tarjetas':        tarj_e1 if (pd.notna(ta1) or pd.notna(tr1)) else np.nan,
+                'disparos_apuerta_for':     num(row, 'Disparos_a_puerta_E1'),
+                'disparos_apuerta_against': num(row, 'Disparos_a_puerta_E2'),
+                'faltas':          num(row, 'Faltas_cometidas_E1'),
+            })
+            historial.setdefault(e2, []).append({
+                'corners_for':     num(row, 'Saques_de_esquina_sacados_E2'),
+                'corners_against': num(row, 'Saques_de_esquina_sacados_E1'),
+                'tarjetas':        tarj_e2 if (pd.notna(ta2) or pd.notna(tr2)) else np.nan,
+                'disparos_apuerta_for':     num(row, 'Disparos_a_puerta_E2'),
+                'disparos_apuerta_against': num(row, 'Disparos_a_puerta_E1'),
+                'faltas':          num(row, 'Faltas_cometidas_E2'),
+            })
+
+    for c, vals in rows.items():
+        df[c] = vals
+
+    print(f"   ✓ Rolling de mercado calculado para {len(historial)} equipos (ventana={MARKET_WINDOW})")
+    return df, historial
+
+
 def compute_h2h_features(df):
     """
     Para cada partido cuenta los últimos H2H_WINDOW enfrentamientos directos
@@ -468,6 +595,9 @@ def select_columns(df):
     """Filtra y mantiene solo las columnas relevantes"""
     print("🔍 Filtrando columnas relevantes...")
     
+    # ⚠️ Solo features PRE-PARTIDO (sin leakage): nada de stats del propio
+    # partido (disparos, posesión, pases, oportunidades, etc.) que solo se
+    # conocen DESPUÉS del pitido final. Eso inflaba CV a 70%+ artificialmente.
     columns_to_keep = [
         'Equipo1', 'Equipo2', 'Es_Local_E1', 'EQUIPO1_GOLES', 'EQUIPO2_GOLES',
         # Coeficiente UEFA estático (compute_uefa_coef_features)
@@ -481,67 +611,19 @@ def select_columns(df):
         'Dias_Descanso_E1', 'Dias_Descanso_E2',
         # Head-to-head últimos 3 enfrentamientos (compute_h2h_features)
         'H2H_W_E1', 'H2H_D', 'H2H_L_E1', 'H2H_GF_E1', 'H2H_GC_E1', 'H2H_N',
-        # xG sintético rolling (compute_xg_features)
+        # xG sintético rolling (compute_xg_features) — promedio de partidos previos
         'xG_E1_rolling', 'xGA_E1_rolling', 'xG_E2_rolling', 'xGA_E2_rolling', 'Diff_xG_rolling',
-        # Goles detallados
-        'Goles_dentro_area_E1', 'Goles_Fuera_Area_E1',
-        'Goles_dentro_area_E2', 'Goles_Fuera_Area_E2',
-        # Disparos
-        'Disparos_totales_E1', 'Disparos_a_puerta_E1', 'Disparos_fuera_E1',
-        'Disparo_Bloqueados_E1', 'Disparos_Al palo_E1', 'Disparos_Larguero_E1',
-        'Disparos_Poste_E1', 'Disparos_a_puerta_fuera_del_area_E1',
-        'Disparos_fuera_desde_fuera_del_area_E1',
-        'Disparos_totales_E2', 'Disparos_a_puerta_E2', 'Disparos_fuera_E2',
-        'Disparo_Bloqueados_E2', 'Disparos_Al palo_E2', 'Disparos_Larguero_E2',
-        'Disparos_Poste_E2', 'Disparos_a_puerta_fuera_del_area_E2',
-        'Disparos_fuera_desde_fuera_del_area_E2',
-        # Ataque
-        'Asistencias_E1', 'Penaltis_marcados_E1', 'Penaltis_fallados_E1',
-        'Penaltis_forzados_E1', 'Ataques_E1', 'Oportunidades_claras_E1',
-        'Saques_de_esquina_sacados_E1', 'Fueras_de_juego_E1', 'Regates_E1',
-        'Ataques_tercio_ofensivo_E1', 'Ataques_zonas_clave_E1', 'Carreras_hacia_el_area_E1',
-        'Asistencias_E2', 'Penaltis_marcados_E2', 'Penaltis_fallados_E2',
-        'Penaltis_forzados_E2', 'Ataques_E2', 'Oportunidades_claras_E2',
-        'Saques_de_esquina_sacados_E2', 'Fueras_de_juego_E2', 'Regates_E2',
-        'Ataques_tercio_ofensivo_E2', 'Ataques_zonas_clave_E2', 'Carreras_hacia_el_area_E2',
-        # Posesión y pases
-        'Posesion_E1', 'Precision_pase_E1', 'Pases_completados_E1', 'Pases_realizados_E1',
-        'Pases_cortos_completados_E1', 'Pases_media_distancia_completados_E1',
-        'Pases_en_largo_completados_E1', 'Pases_completados_atras_E1',
-        'Pases_completadosa_izquierda_E1', 'Pases_completados_derecha_E1',
-        'Libres_directos_sacados_E1', 'Centros__tercio_ofensivo_E1',
-        'Pases_zonas_clave_E1', 'Pases_al_area_E1', 'Precision_en_el_centro_E1',
-        'Centros_completados_E1', 'Centros_realizados_E1', 'Tiempo_de_posesion_E1',
-        'Posesion_E2', 'Precision_pase_E2', 'Pases_completados_E2', 'Pases_realizados_E2',
-        'Pases_cortos_completados_E2', 'Pases_media_distancia_completados_E2',
-        'Pases_en_largo_completados_E2', 'Pases_completados_atras_E2',
-        'Pases_completadosa_izquierda_E2', 'Pases_completados_derecha_E2',
-        'Libres_directos_sacados_E2', 'Centros__tercio_ofensivo_E2',
-        'Pases_zonas_clave_E2', 'Pases_al_area_E2', 'Precision_en_el_centro_E2',
-        'Centros_completados_E2', 'Centros_realizados_E2', 'Tiempo_de_posesion_E2',
-        # Defensa
-        'Balones_recuperados_E1', 'Bloqueos_E1', 'Penaltis_cometidos_E1',
-        'Entradas_E1', 'Entradas_con_exito_E1', 'Entradas_perdidas_E1',
-        'Despejes_completados_E1', 'Despejes_realizados_E1',
-        'Balones_recuperados_E2', 'Bloqueos_E2', 'Penaltis_cometidos_E2',
-        'Entradas_E2', 'Entradas_con_exito_E2', 'Entradas_perdidas_E2',
-        'Despejes_completados_E2', 'Despejes_realizados_E2',
-        # Portería
-        'goles_encajados_E1', 'Goles_encajados_propia_puerta_E1', 'Porterias_a_cero_E1',
-        'Paradas_E1', 'Paradas_en_libres_directo_E1', 'Paradas-tras_libre_indirecto_E1',
-        'Penaltis_parados_E1', 'Balones_blocados_E1', 'Balones_blocados_por arriba_E1',
-        'Balones_blocados_por_abajo_E1', 'Despejes_de_puños_E1',
-        'goles_encajados_E2', 'Goles_encajados_propia_puerta_E2', 'Porterias_a_cero_E2',
-        'Paradas_E2', 'Paradas_en_libres_directo_E2', 'Paradas-tras_libre_indirecto_E2',
-        'Penaltis_parados_E2', 'Balones_blocados_E2', 'Balones_blocados_por arriba_E2',
-        'Balones_blocados_por_abajo_E2', 'Despejes_de_puños_E2',
-        # Disciplina
-        'Tarjetas_amarillas_E1', 'Tarjetas_rojas_E1', 'Faltas_cometidas_E1',
-        'Faltas_cometidas_tercio_def_E1', 'Faltas_cometidas_en_campo_propio_E1',
-        'Tarjetas_amarillas_E2', 'Tarjetas_rojas_E2', 'Faltas_cometidas_E2',
-        'Faltas_cometidas_tercio_def_E2', 'Faltas_cometidas_en_campo_propio_E2',
-        # Media alineación titular
+        # Media alineación titular (pre-partido, calidad del 11 inicial)
         'media11_titular_E1', 'media11_titular_E2',
+        # Rolling pre-partido por mercado (compute_market_rolling_features)
+        'Corners_E1_for_ult5', 'Corners_E1_against_ult5',
+        'Corners_E2_for_ult5', 'Corners_E2_against_ult5',
+        'Tarjetas_E1_ult5', 'Tarjetas_E2_ult5',
+        'Disparos_apuerta_E1_for_ult5', 'Disparos_apuerta_E1_against_ult5',
+        'Disparos_apuerta_E2_for_ult5', 'Disparos_apuerta_E2_against_ult5',
+        'Faltas_E1_ult5', 'Faltas_E2_ult5',
+        'Diff_Corners_for', 'Diff_Tarjetas',
+        'Diff_Disparos_apuerta', 'Diff_Faltas',
     ]
     
     # Mantener solo columnas que existen en el dataframe
@@ -613,7 +695,7 @@ def create_derived_variables(df):
     # Diferencia de goles
     if 'EQUIPO1_GOLES' in df.columns and 'EQUIPO2_GOLES' in df.columns:
         df['Diferencia_Goles'] = df['EQUIPO1_GOLES'] - df['EQUIPO2_GOLES']
-    
+
     # Resultado (Win/Draw/Loss para Equipo1)
     if 'EQUIPO1_GOLES' in df.columns and 'EQUIPO2_GOLES' in df.columns:
         df['Resultado_E1'] = df.apply(
@@ -695,22 +777,40 @@ def aggregate_by_team(df):
 # 7. JOINS (Joiner #42, #73, #95, #127)
 # ============================================================================
 def join_team_stats(df, team_stats):
-    """Une estadísticas de equipos al dataset principal"""
+    """Une estadísticas de equipos al dataset principal.
+
+    Promedio de goles del equipo SOLO con partidos previos (expanding mean) —
+    así la feature está disponible pre-partido sin leakage temporal. Antes se
+    usaba groupby+transform sobre todo el df, que incluía partidos futuros.
+    """
     print("🔗 Realizando joins de estadísticas de equipos...")
-    
+
     df_enriched = df.copy()
-    
-    # Agregar estadísticas por equipo (simplificado)
-    if 'Equipo1' in df.columns:
-        team_means = df.groupby('Equipo1')['EQUIPO1_GOLES'].transform('mean')
-        df_enriched['Equipo1_PromedioGoles'] = team_means
-    
-    if 'Equipo2' in df.columns:
-        team_means = df.groupby('Equipo2')['EQUIPO2_GOLES'].transform('mean')
-        df_enriched['Equipo2_PromedioGoles'] = team_means
-    
-    print(f"   ✓ Dataset enriquecido con estadísticas de equipos")
-    
+
+    if {'Equipo1', 'Equipo2', 'EQUIPO1_GOLES', 'EQUIPO2_GOLES'}.issubset(df.columns):
+        gf_hist = {}  # equipo -> lista de goles anotados como E1 o E2 (en orden cronológico)
+        prom_e1, prom_e2 = [], []
+
+        for _, row in df.iterrows():
+            e1, e2 = row['Equipo1'], row['Equipo2']
+            h1 = gf_hist.get(e1, [])
+            h2 = gf_hist.get(e2, [])
+            prom_e1.append(float(np.mean(h1)) if h1 else np.nan)
+            prom_e2.append(float(np.mean(h2)) if h2 else np.nan)
+
+            # Actualizar historial con el resultado real (solo partidos jugados)
+            g1, g2 = row.get('EQUIPO1_GOLES'), row.get('EQUIPO2_GOLES')
+            if pd.notna(g1):
+                gf_hist.setdefault(e1, []).append(float(g1))
+            if pd.notna(g2):
+                gf_hist.setdefault(e2, []).append(float(g2))
+
+        df_enriched['Equipo1_PromedioGoles'] = prom_e1
+        df_enriched['Equipo2_PromedioGoles'] = prom_e2
+        print(f"   ✓ Promedio de goles pre-partido (expanding) para {len(gf_hist)} equipos")
+    else:
+        print("   ⚠ faltan columnas para calcular promedio de goles (skipped)")
+
     return df_enriched
 
 
@@ -755,8 +855,12 @@ def prepare_for_modeling(df):
 # ============================================================================
 # 9. ENTRENAR MODELOS — CLASIFICACIÓN (Win / Draw / Loss)
 # ============================================================================
-def train_models(X_train, y_train, X_test, y_test):
-    """Entrena los clasificadores balanceados sobre el split cronológico."""
+def train_models(X_train, y_train, X_test, y_test, df_train=None, df_test=None, le_res=None):
+    """Entrena los clasificadores balanceados sobre el split cronológico.
+
+    df_train/df_test/le_res: opcionales. Si se pasan, también entrena Dixon-Coles
+    sobre df_train y agrega sus predicciones (int-encoded vía le_res) al dict.
+    """
     print("🎓 Entrenando modelos de clasificación...")
 
     models = build_classifiers(seed=42, n_features=X_train.shape[1])
@@ -765,6 +869,20 @@ def train_models(X_train, y_train, X_test, y_test):
         print(f"   - Entrenando {name}...")
         clf.fit(X_train, y_train)
         predictions[name] = clf.predict(X_test)
+
+    if df_train is not None and df_test is not None and le_res is not None:
+        print("   - Entrenando Dixon-Coles...")
+        dc = DixonColesModel(max_goals=10).fit(df_train)
+        models['Dixon-Coles'] = dc
+        preds_dc = []
+        for _, r in df_test.iterrows():
+            e1, e2 = str(r['Equipo1']), str(r['Equipo2'])
+            is_home = bool(r.get('Es_Local_E1', 1))
+            if e1 not in dc.params_['attack'] or e2 not in dc.params_['attack']:
+                preds_dc.append('Win')  # fallback
+            else:
+                preds_dc.append(dc.predict(e1, e2, is_home_e1=is_home))
+        predictions['Dixon-Coles'] = le_res.transform(preds_dc)
 
     print(f"   ✓ {len(models)} modelos entrenados")
     return models, predictions
@@ -799,13 +917,16 @@ def evaluate_models(models, predictions, y_test, class_labels=None):
 # ============================================================================
 # 10B. CROSS-VALIDATION — accuracy estable con pocos datos
 # ============================================================================
-def cross_validate_models(X, y, n_splits=3, random_state=42):
+def cross_validate_models(X, y, df_dc=None, n_splits=3, random_state=42):
     """
     Walk-forward validation: respeta el orden cronológico del dataset.
     Cada fold entrena solo con partidos ANTERIORES a los del test.
     n_splits=3 → test folds de ~20 partidos (con 81 totales) — menos ruido de muestreo
     que n_splits=5 (que daba folds de ~13 y varianza inflada artificialmente).
     Requisito: X e y deben venir ordenados por Fecha ascendente.
+
+    df_dc: opcional, DataFrame con columnas Equipo1/Equipo2/EQUIPO1_GOLES/EQUIPO2_GOLES/
+        Es_Local_E1 alineado por índice con X. Si se pasa, evalúa también Dixon-Coles.
     """
     n = len(X)
     test_size = n // (n_splits + 1)
@@ -833,6 +954,37 @@ def cross_validate_models(X, y, n_splits=3, random_state=42):
         folds_str = ' '.join(f'{s:.0%}' for s in out['test_acc'])
         print(f"  {name:<22}  acc {acc_m:.2%}±{acc_s:.2%}  F1 {f1_m:.2%}±{f1_s:.2%}  "
               f"último fold: {acc_last:.0%}  (folds: {folds_str})")
+
+    # Dixon-Coles walk-forward (mismas splits, fit por fold)
+    if df_dc is not None:
+        accs, f1s = [], []
+        for tr_idx, te_idx in cv.split(X):
+            train_df = df_dc.iloc[tr_idx]
+            test_df = df_dc.iloc[te_idx]
+            dc = DixonColesModel(max_goals=10).fit(train_df)
+            preds, reals = [], []
+            for _, r in test_df.iterrows():
+                e1, e2 = str(r['Equipo1']), str(r['Equipo2'])
+                is_home = bool(r.get('Es_Local_E1', 1))
+                g1, g2 = int(r['EQUIPO1_GOLES']), int(r['EQUIPO2_GOLES'])
+                real = 'Win' if g1 > g2 else ('Loss' if g1 < g2 else 'Draw')
+                reals.append(real)
+                if e1 not in dc.params_['attack'] or e2 not in dc.params_['attack']:
+                    preds.append('Win')
+                else:
+                    preds.append(dc.predict(e1, e2, is_home_e1=is_home))
+            accs.append(accuracy_score(reals, preds))
+            f1s.append(f1_score(reals, preds, labels=['Win', 'Draw', 'Loss'],
+                                average='macro', zero_division=0))
+        acc_arr = np.array(accs); f1_arr = np.array(f1s)
+        rows.append({'Model': 'Dixon-Coles',
+                     'CV Mean': acc_arr.mean(), 'CV Std': acc_arr.std(),
+                     'F1 Mean': f1_arr.mean(), 'F1 Std': f1_arr.std(),
+                     'Acc Last': acc_arr[-1], 'F1 Last': f1_arr[-1]})
+        folds_str = ' '.join(f'{s:.0%}' for s in acc_arr)
+        print(f"  {'Dixon-Coles':<22}  acc {acc_arr.mean():.2%}±{acc_arr.std():.2%}  "
+              f"F1 {f1_arr.mean():.2%}±{f1_arr.std():.2%}  "
+              f"último fold: {acc_arr[-1]:.0%}  (folds: {folds_str})")
 
     print("\nRANKING (por Macro-F1 del último fold — entrenó con más historial):")
     for r in sorted(rows, key=lambda x: x['F1 Last'], reverse=True):
@@ -965,11 +1117,22 @@ def main(filepath, test_size=0.2, random_state=42):
     y_train, y_test = y.iloc[:n_train], y.iloc[n_train:]
     print(f"\n🔀 Split cronológico: {len(X_train)} train (antiguos) — {len(X_test)} test (últimos {len(X_test)} partidos)")
 
-    # 11. Cross-validation antes de entrenar el modelo final
-    cv_results = cross_validate_models(X, y)
+    # df paralelo a X (mismo índice) para Dixon-Coles
+    dc_cols = ['Equipo1', 'Equipo2', 'EQUIPO1_GOLES', 'EQUIPO2_GOLES', 'Es_Local_E1']
+    df_dc = df.loc[X.index, [c for c in dc_cols if c in df.columns]].copy()
+    if 'Fecha' in df.columns:
+        df_dc['Fecha'] = df.loc[X.index, 'Fecha'].values
+    df_dc_train = df_dc.iloc[:n_train]
+    df_dc_test  = df_dc.iloc[n_train:]
+
+    # 11. Cross-validation antes de entrenar el modelo final (incluye Dixon-Coles)
+    cv_results = cross_validate_models(X, y, df_dc=df_dc)
 
     # 12. Entrenar clasificadores (resultado) y regresores (goles)
-    models, predictions = train_models(X_train, y_train, X_test, y_test)
+    models, predictions = train_models(
+        X_train, y_train, X_test, y_test,
+        df_train=df_dc_train, df_test=df_dc_test, le_res=le_dict['Resultado_E1'],
+    )
 
     y1_train = df_model.loc[X_train.index, 'EQUIPO1_GOLES']
     y2_train = df_model.loc[X_train.index, 'EQUIPO2_GOLES']
@@ -990,7 +1153,20 @@ def main(filepath, test_size=0.2, random_state=42):
     loss_i = cl.index('Loss') if 'Loss' in cl else None
     for model_name, y_pred in predictions.items():
         predictions_df[model_name] = le_dict['Resultado_E1'].inverse_transform(y_pred)
-        if model_name in models:
+        if model_name == 'Dixon-Coles':
+            dc = models[model_name]
+            probas = []
+            for _, r in df_dc_test.iterrows():
+                e1, e2 = str(r['Equipo1']), str(r['Equipo2'])
+                is_home = bool(r.get('Es_Local_E1', 1))
+                if e1 not in dc.params_['attack'] or e2 not in dc.params_['attack']:
+                    probas.append(np.array([1/3]*len(cl)))
+                else:
+                    probas.append(_dc_proba_in_class_order(dc, e1, e2, is_home, cl))
+            if win_i  is not None: predictions_df[f'{model_name}__win']  = [round(float(p[win_i])*100,  1) for p in probas]
+            if draw_i is not None: predictions_df[f'{model_name}__draw'] = [round(float(p[draw_i])*100, 1) for p in probas]
+            if loss_i is not None: predictions_df[f'{model_name}__loss'] = [round(float(p[loss_i])*100, 1) for p in probas]
+        elif model_name in models:
             probas = models[model_name].predict_proba(X_test)
             if win_i  is not None: predictions_df[f'{model_name}__win']  = [round(float(p[win_i])*100,  1) for p in probas]
             if draw_i is not None: predictions_df[f'{model_name}__draw'] = [round(float(p[draw_i])*100, 1) for p in probas]
@@ -1021,6 +1197,10 @@ def main(filepath, test_size=0.2, random_state=42):
         for name, clf in build_classifiers(seed=seed, n_features=len(X.columns)).items():
             clf.fit(X, y)
             full_models.setdefault(name, []).append(clf)
+
+    # Dixon-Coles: una sola "semilla" (no es estocástico) entrenada sobre todo el dataset
+    dc_full = DixonColesModel(max_goals=10).fit(df_dc)
+    full_models['Dixon-Coles'] = [dc_full]
 
     # Feature importance: usar el primer RF ya fiteado sobre el dataset completo
     try:
@@ -1388,7 +1568,10 @@ def predecir_partido(equipo1, equipo2, results, n_runs=20, fase='Liga'):
         return build_classifiers(seed=seed, n_features=n_feat)
 
     # Ordenar modelos por F1 del último fold (entrenó con más historial → mejor proxy)
+    full_models = results.get('full_models')
     model_names = list(make_clfs(0).keys())
+    if full_models and 'Dixon-Coles' in full_models:
+        model_names.append('Dixon-Coles')
     cv_df = results.get('cv_results')
     if cv_df is not None:
         for col in ('F1 Last', 'F1 Mean', 'CV Mean'):
@@ -1399,19 +1582,25 @@ def predecir_partido(equipo1, equipo2, results, n_runs=20, fase='Liga'):
 
     probas_acum = {name: [] for name in model_names}
 
-    full_models = results.get('full_models')
-
     print(f"\n{'='*58}")
     print(f"🔮  {equipo1}  vs  {equipo2}")
     print(f"{'='*58}")
 
     if full_models:
-        n_seeds = len(next(iter(full_models.values())))
+        n_seeds = max(len(v) for v in full_models.values())
         print(f"   Prediciendo con {n_seeds} semillas pre-entrenadas...", end='', flush=True)
         for name in model_names:
             if name in full_models:
-                for clf in full_models[name]:
-                    probas_acum[name].append(clf.predict_proba(X_pred)[0])
+                if name == 'Dixon-Coles':
+                    dc = full_models[name][0]
+                    is_home_e1 = bool(row.get('Es_Local_E1', 1))
+                    if equipo1 in dc.params_['attack'] and equipo2 in dc.params_['attack']:
+                        probas_acum[name].append(_dc_proba_in_class_order(dc, equipo1, equipo2, is_home_e1, classes))
+                    else:
+                        probas_acum[name].append(np.array([1/len(classes)] * len(classes)))
+                else:
+                    for clf in full_models[name]:
+                        probas_acum[name].append(clf.predict_proba(X_pred)[0])
         print(" listo.")
     else:
         print(f"   Entrenando ensemble ({n_runs} corridas)...", end='', flush=True)

@@ -34,5 +34,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD curl -fsS http://localhost:${PORT}/api/health || exit 1
 
-# `sh -c` para que ${PORT} se expanda
-CMD ["sh", "-c", "uvicorn api:app --host 0.0.0.0 --port ${PORT}"]
+# `sh -c` para que ${PORT} se expanda. api.api:app = paquete api/, módulo api.py, FastAPI app
+CMD ["sh", "-c", "uvicorn api.api:app --host 0.0.0.0 --port ${PORT}"]

@@ -74,3 +74,45 @@ IDEAS PENDIENTES — Predicción Champions League
      - Si acierta bien en UCL pero falla sistemáticamente en selecciones, O
      - Si feature_importance muestra que es_seleccion domina demasiado
        (señal de que los patrones son incompatibles).
+
+8. Integrar scraper de redes sociales / web como fuente de features pre-partido
+   Aprovechar el proyecto de scraping ya existente para sumar señal externa al modelo.
+
+   Espectro de utilidad (alta → baja):
+   ALTA (puede sumar 3-7p de accuracy):
+     - Lesiones / suspensiones: scrapear BBC Sport, Marca, Transfermarkt o sitios
+       oficiales. Saber que un jugador clave se cae cambia el partido. Estructurado.
+     - Alineaciones filtradas (1h pre-partido): si lo conseguís antes del cierre
+       de cuotas → edge real vs las casas.
+     - Tipsters con track record verificado: scrapear cuentas que históricamente
+       superan al mercado (no influencers random). Su consenso = feature ponderada.
+
+   MEDIA (1-3p):
+     - Declaraciones de DT / press conferences (rotaciones, plan táctico).
+     - Volumen de menciones / buzz pre-partido.
+
+   BAJA — casi ruido (0-1p):
+     - Sentiment de fans en X / TikTok (los hinchas son emocionales y sesgados;
+       la cuota ya incorpora esa info).
+     - Encuestas de redes ("¿quién gana?") — sesgo de selección.
+
+   Trampas a evitar:
+     a) LEAKAGE TEMPORAL: cada scrape tiene que tener timestamp y usarse SOLO para
+        partidos posteriores. Si scrapeás "hoy" y aplicás a partidos pasados,
+        contamina el train con info del futuro.
+     b) POCAS FILAS, MUCHAS FEATURES: con 189 partidos UCL no se pueden meter 20
+        features nuevas de sentiment. Compactar en 1-2 features compuestas:
+          - injury_impact_E1 = sum(importancia_jugador × prob_ausencia)
+            (importancia se puede derivar del rating media11 que ya está en pipeline)
+          - expert_consensus_winE1 = % promedio de Win de N tipsters confiables
+     c) VALIDAR EN PIPELINE REAL: ver memoria [[feedback_eval_no_transfiere]].
+        Cualquier feature nueva validar con CV walk-forward en main(), no en eval
+        aislado que monkey-patchea constantes.
+
+   Plan sugerido si se aborda:
+     1. Empezar SOLO por lesiones (mayor ROI según literatura académica de fútbol).
+     2. Si funciona, sumar expert_consensus de tipsters con edge verificado.
+     3. NO perder tiempo con sentiment de fans hasta haber explotado lo anterior.
+     4. Validación honesta antes de mergear.
+
+   Stack del scraper actual: ver el proyecto de scraping de redes sociales del usuario.

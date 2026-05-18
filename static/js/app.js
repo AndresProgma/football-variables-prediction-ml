@@ -130,6 +130,11 @@ async function cargarMetricas() {
   const tbody = $('tbl-metricas');
   const cv = state.metricas.cv;
 
+  // Mostrar tamaño del dataset usado en el walk-forward
+  const nEl = $('metricas-n-partidos');
+  const nPart = state.metricas.n_partidos ?? (state.partidos || []).length;
+  if (nEl && nPart) nEl.textContent = nPart;
+
   tbody.innerHTML = cv.map(m => {
     const accF = m['CV Mean']  != null ? (m['CV Mean']  * 100).toFixed(1) : '—';
     const f1F  = m['F1 Mean']  != null ? (m['F1 Mean']  * 100).toFixed(1) : '—';
